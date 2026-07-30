@@ -1,9 +1,9 @@
-LUAGUI_NAME = "KH1FM LIMIT Gauge v2.1 Redesigned Half Scale"
+LUAGUI_NAME = "KH1FM LIMIT Gauge v2.2 Exact Reference"
 LUAGUI_AUTH = "OpenAI"
-LUAGUI_DESC = "Adds the redesigned adjustable LIMIT gauge at half scale by default."
+LUAGUI_DESC = "Reproduces the supplied empty/full LIMIT gauge references exactly."
 
 --[[
-    KH1FM LIMIT GAUGE v2.1 -- REDESIGNED HALF-SCALE LAYOUT
+    KH1FM LIMIT GAUGE v2.2 -- EXACT REFERENCE LAYOUT
     Target: KINGDOM HEARTS FINAL MIX.exe, Steam Global 1.0.0.2
     SHA-256: d790746245d26159f3ee0e1060e33b2fa2de06941850a4ac724f598722884bac
     Runtime: LuaBackendHook v1.9.1-hook / LuaEngine v5.0
@@ -15,13 +15,13 @@ LUAGUI_DESC = "Adds the redesigned adjustable LIMIT gauge at half scale by defau
       * Uses KH1's native solid-rectangle and ASCII-font renderers after the
         complete player HUD loop. No DDS replacement, UV remap, resource
         capture, or sprite suppression is involved.
-      * Keeps the redesigned gray/black gauge backs visible. Each complete
-        slot changes to a shaded red fill with a cyan-teal outline at its
-        20-point threshold.
-      * Reconstructs the supplied redesigned 640x448 reference images. Their
-        meaningful source footprint is X=30..253 and Y=4..63.
-      * Defaults to SCALE=0.50, producing an approximately 112x30-pixel
-        footprint while keeping X=0, Y=0 as the adjustable base origin.
+      * Keeps all five supplied gray/black empty slots visible. Each complete
+        slot changes to the supplied solid red fill, dark-red side shading,
+        and cyan-teal outline at its 20-point threshold.
+      * Reconstructs the supplied 640x448 empty/full reference images at the
+        default settings. Slot pixels occupy X=31..126 and Y=2..31; the red
+        LIMIT label occupies X=15..28 and Y=27..30.
+      * Defaults to SCALE=0.50 and keeps X=0, Y=0 as the adjustable origin.
       * Reads the published LIMIT v1.6 interface without changing LIMIT.
 
     DISCRETE FILL
@@ -58,39 +58,41 @@ local CONFIG = {
     ORIGIN = {
         X = 0,
         Y = 0,
-        -- 0.50 is approximately half the redesigned source size.
+        -- 0.50 exactly matches the supplied reference images.
         -- Examples: 0.75 = three-quarter size; 1.00 = source size.
         SCALE = 0.50,
     },
 
-    -- Exact slot bounds reconstructed from the two redesigned images.
+    -- Exact doubled-pixel bounds reconstructed from the supplied 0.50-scale
+    -- images. Do not alter these values if an exact shape match is required.
     -- Coordinates are relative to ORIGIN and are multiplied by SCALE.
     LAYOUT = {
         BASELINE_Y = 64,
         OUTLINE = 1,
+        INNER_EDGE = 1,
 
-        -- BACK_* describes the black stair-step gap after each slot.
-        -- Slot 5 uses it for the lower-right cutout.
         BLOCKS = {
             {
-                X = 61, Y = 44, WIDTH = 33,
-                BACK_X = 94, BACK_Y = 44, BACK_WIDTH = 5,
+                X = 62, Y = 44, WIDTH = 32,
+                GAP_X = 94, GAP_Y = 44, GAP_WIDTH = 6,
             },
             {
-                X = 99, Y = 34, WIDTH = 34,
-                BACK_X = 133, BACK_Y = 34, BACK_WIDTH = 5,
+                X = 100, Y = 34, WIDTH = 34,
+                GAP_X = 134, GAP_Y = 34, GAP_WIDTH = 4,
             },
             {
                 X = 138, Y = 24, WIDTH = 34,
-                BACK_X = 172, BACK_Y = 24, BACK_WIDTH = 4,
+                GAP_X = 172, GAP_Y = 24, GAP_WIDTH = 4,
             },
             {
-                X = 176, Y = 14, WIDTH = 35,
-                BACK_X = 211, BACK_Y = 14, BACK_WIDTH = 3,
+                X = 176, Y = 14, WIDTH = 36,
+                GAP_X = 212, GAP_Y = 14, GAP_WIDTH = 2,
             },
             {
+                -- At SCALE=0.50 this slot is 20 pixels wide above Y=21
+                -- and exactly 18 pixels wide below it.
                 X = 214, Y = 4, WIDTH = 40,
-                BACK_X = 248, BACK_Y = 43, BACK_WIDTH = 6,
+                STEP_Y = 42, LOWER_WIDTH = 36,
             },
         },
     },
@@ -106,23 +108,13 @@ local CONFIG = {
 
     COLORS = {
         -- KH1 HUD colors use AABBGGRR; 0x80 is full native HUD opacity.
-        FILLED_OUTLINE = 0x80FFC000,
+        -- These are the exact RGB values sampled from the references.
+        FILLED_OUTLINE = 0x80FFEE00, -- RGB 0,238,255
+        FILLED_EDGE = 0x800000B5,    -- RGB 181,0,0
+        FILLED_CENTER = 0x802A14E2,  -- RGB 226,20,42
         EMPTY_OUTLINE = 0x804A4A4A,
-
-        -- Four left-to-right shading bands reconstructed from the images.
-        FILLED_BANDS = {
-            0x80111472,
-            0x80161CBE,
-            0x80181FEC,
-            0x80131792,
-        },
-        EMPTY_BANDS = {
-            0x80272727,
-            0x80464646,
-            0x80555555,
-            0x80272727,
-        },
-
+        EMPTY_EDGE = 0x80272727,
+        EMPTY_CENTER = 0x80555555,
         BLACK_BACK = 0x80000000,
     },
 
@@ -141,7 +133,7 @@ local CONFIG = {
 -- VERIFIED BUILD CONSTANTS -- DO NOT EDIT
 -- =========================================================================
 
-local PREFIX = "[LimitGaugeV2.1] "
+local PREFIX = "[LimitGaugeV2.2] "
 
 local VERSION_SENTINEL_RVA = 0x3B2271
 local VERSION_VALUE = 0x7265737563697065
@@ -194,6 +186,7 @@ local DATA_SENTINEL = 0x324D494C
 local RECTANGLE_RECORDS_OFFSET = 0x08
 local RECTANGLE_RECORD_SIZE = 0x18
 local MAX_RECTANGLES = 30
+local EXACT_RECTANGLE_COUNT = 22
 local LABEL_RECORD_OFFSET = 0x2D8
 local LABEL_RECORD_SIZE = 0x20
 
@@ -402,9 +395,12 @@ local function addBlock(rectangles, block, filled)
     local outlineColor = filled
         and colors.FILLED_OUTLINE
         or colors.EMPTY_OUTLINE
-    local bands = filled
-        and colors.FILLED_BANDS
-        or colors.EMPTY_BANDS
+    local edgeColor = filled
+        and colors.FILLED_EDGE
+        or colors.EMPTY_EDGE
+    local centerColor = filled
+        and colors.FILLED_CENTER
+        or colors.EMPTY_CENTER
 
     local left = round(CONFIG.ORIGIN.X + block.X * scale)
     local top = round(CONFIG.ORIGIN.Y + block.Y * scale)
@@ -415,16 +411,79 @@ local function addBlock(rectangles, block, filled)
         CONFIG.ORIGIN.Y + layout.BASELINE_Y * scale
     )
     local outline = math.max(1, round(layout.OUTLINE * scale))
+    local innerEdge = math.max(1, round(layout.INNER_EDGE * scale))
     local innerLeft = left + outline
     local innerTop = top + outline
     local innerRight = math.max(innerLeft + 1, right - outline)
     local innerBottom = math.max(innerTop + 1, bottom - outline)
-    local innerWidth = math.max(1, innerRight - innerLeft)
 
-    -- Six records per slot:
-    --   1: complete outline
-    --   2-5: four horizontal shading bands
-    --   6: black stair-step gap, or slot 5's lower-right cutout
+    if block.LOWER_WIDTH ~= nil then
+        -- The supplied fifth slot has a two-pixel lower-right inset. The
+        -- narrower lower outline overlaps the final upper row to form the
+        -- exact horizontal cyan/gray step without drawing a black cutout.
+        local stepTop = round(
+            CONFIG.ORIGIN.Y + block.STEP_Y * scale
+        )
+        local lowerRight = round(
+            CONFIG.ORIGIN.X
+                + (block.X + block.LOWER_WIDTH) * scale
+        )
+
+        addRectangleEdges(
+            rectangles,
+            left,
+            top,
+            right,
+            stepTop + outline,
+            outlineColor
+        )
+        addRectangleEdges(
+            rectangles,
+            innerLeft,
+            innerTop,
+            innerRight,
+            stepTop,
+            edgeColor
+        )
+        addRectangleEdges(
+            rectangles,
+            innerLeft + innerEdge,
+            innerTop,
+            math.max(innerLeft + innerEdge + 1, innerRight - innerEdge),
+            stepTop,
+            centerColor
+        )
+        addRectangleEdges(
+            rectangles,
+            left,
+            stepTop,
+            lowerRight,
+            bottom,
+            outlineColor
+        )
+        addRectangleEdges(
+            rectangles,
+            innerLeft,
+            stepTop,
+            math.max(innerLeft + 1, lowerRight - outline),
+            innerBottom,
+            edgeColor
+        )
+        addRectangleEdges(
+            rectangles,
+            innerLeft + innerEdge,
+            stepTop,
+            math.max(
+                innerLeft + innerEdge + 1,
+                lowerRight - outline - innerEdge
+            ),
+            innerBottom,
+            centerColor
+        )
+        return
+    end
+
+    -- Standard supplied slot: outer line, dark side edge, solid center.
     addRectangleEdges(
         rectangles,
         left,
@@ -433,32 +492,30 @@ local function addBlock(rectangles, block, filled)
         bottom,
         outlineColor
     )
-
-    local bandIndex
-    for bandIndex = 1, 4 do
-        local bandLeft = innerLeft
-            + math.floor(innerWidth * (bandIndex - 1) / 4)
-        local bandRight = innerLeft
-            + math.floor(innerWidth * bandIndex / 4)
-        if bandIndex == 4 then
-            bandRight = innerRight
-        end
-        addRectangleEdges(
-            rectangles,
-            bandLeft,
-            innerTop,
-            math.max(bandLeft + 1, bandRight),
-            innerBottom,
-            bands[bandIndex]
-        )
-    end
-
     addRectangleEdges(
         rectangles,
-        CONFIG.ORIGIN.X + block.BACK_X * scale,
-        CONFIG.ORIGIN.Y + block.BACK_Y * scale,
+        innerLeft,
+        innerTop,
+        innerRight,
+        innerBottom,
+        edgeColor
+    )
+    addRectangleEdges(
+        rectangles,
+        innerLeft + innerEdge,
+        innerTop,
+        math.max(innerLeft + innerEdge + 1, innerRight - innerEdge),
+        innerBottom,
+        centerColor
+    )
+
+    -- Exact opaque-black stair gap following slots 1-4.
+    addRectangleEdges(
+        rectangles,
+        CONFIG.ORIGIN.X + block.GAP_X * scale,
+        CONFIG.ORIGIN.Y + block.GAP_Y * scale,
         CONFIG.ORIGIN.X
-            + (block.BACK_X + block.BACK_WIDTH) * scale,
+            + (block.GAP_X + block.GAP_WIDTH) * scale,
         CONFIG.ORIGIN.Y + layout.BASELINE_Y * scale,
         colors.BLACK_BACK
     )
@@ -597,27 +654,45 @@ local function validateConfiguration()
         or #CONFIG.LAYOUT.BLOCKS ~= 5
         or type(CONFIG.LAYOUT.BASELINE_Y) ~= "number"
         or type(CONFIG.LAYOUT.OUTLINE) ~= "number"
+        or type(CONFIG.LAYOUT.INNER_EDGE) ~= "number"
         or CONFIG.LAYOUT.OUTLINE < 1
+        or CONFIG.LAYOUT.INNER_EDGE < 1
     then
         return false, "LAYOUT settings are invalid"
     end
     local index
     for index = 1, 5 do
         local block = CONFIG.LAYOUT.BLOCKS[index]
+        local standardBlock = index < 5
         if type(block) ~= "table"
             or type(block.X) ~= "number"
             or type(block.Y) ~= "number"
             or type(block.WIDTH) ~= "number"
-            or type(block.BACK_X) ~= "number"
-            or type(block.BACK_Y) ~= "number"
-            or type(block.BACK_WIDTH) ~= "number"
             or block.WIDTH < 8
-            or block.BACK_WIDTH < 1
             or block.Y >= CONFIG.LAYOUT.BASELINE_Y - 4
-            or block.BACK_Y >= CONFIG.LAYOUT.BASELINE_Y
         then
             return false, "LAYOUT.BLOCKS[" .. tostring(index)
                 .. "] is invalid"
+        end
+        if standardBlock and (
+            type(block.GAP_X) ~= "number"
+            or type(block.GAP_Y) ~= "number"
+            or type(block.GAP_WIDTH) ~= "number"
+            or block.GAP_WIDTH < 1
+            or block.GAP_Y >= CONFIG.LAYOUT.BASELINE_Y
+        ) then
+            return false, "LAYOUT.BLOCKS[" .. tostring(index)
+                .. "] gap is invalid"
+        end
+        if not standardBlock and (
+            type(block.STEP_Y) ~= "number"
+            or type(block.LOWER_WIDTH) ~= "number"
+            or block.STEP_Y <= block.Y
+            or block.STEP_Y >= CONFIG.LAYOUT.BASELINE_Y
+            or block.LOWER_WIDTH < 8
+            or block.LOWER_WIDTH >= block.WIDTH
+        ) then
+            return false, "LAYOUT.BLOCKS[5] step is invalid"
         end
     end
     if type(CONFIG.LABEL) ~= "table"
@@ -635,14 +710,14 @@ local function validateConfiguration()
     end
     local colors = {
         CONFIG.COLORS.FILLED_OUTLINE,
+        CONFIG.COLORS.FILLED_EDGE,
+        CONFIG.COLORS.FILLED_CENTER,
         CONFIG.COLORS.EMPTY_OUTLINE,
+        CONFIG.COLORS.EMPTY_EDGE,
+        CONFIG.COLORS.EMPTY_CENTER,
         CONFIG.COLORS.BLACK_BACK,
         CONFIG.LABEL.COLOR,
     }
-    for index = 1, 4 do
-        colors[#colors + 1] = CONFIG.COLORS.FILLED_BANDS[index]
-        colors[#colors + 1] = CONFIG.COLORS.EMPTY_BANDS[index]
-    end
     for index = 1, #colors do
         if type(colors[index]) ~= "number"
             or colors[index] < 0
@@ -658,9 +733,9 @@ local function validateConfiguration()
         return false, "PREVIEW_LIMIT must be -1 or 0..100"
     end
     local rectangles = buildRectangles(5)
-    if #rectangles ~= MAX_RECTANGLES then
-        return false, "layout must generate exactly "
-            .. tostring(MAX_RECTANGLES) .. " rectangles"
+    if #rectangles ~= EXACT_RECTANGLE_COUNT then
+        return false, "exact layout must generate "
+            .. tostring(EXACT_RECTANGLE_COUNT) .. " rectangles"
     end
     if LABEL_RECORD_OFFSET + LABEL_RECORD_SIZE > DATA_SIZE then
         return false, "LIMIT label exceeds the private data cache"
@@ -942,7 +1017,7 @@ function _OnFrame()
         end
 
         runtime.installed = true
-        log("READY: redesigned half-scale five-slot LIMIT gauge; "
+        log("READY: exact-reference five-slot LIMIT gauge; "
             .. tostring(installReason) .. ".")
         log("NATIVE HUD PRESERVED: portrait, HP, MP, labels, and textures are untouched.")
         log("LAYOUT: base origin X=" .. tostring(CONFIG.ORIGIN.X)

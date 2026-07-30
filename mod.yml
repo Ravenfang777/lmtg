@@ -1,16 +1,16 @@
-title: KH1FM Redesigned Five-Slot LIMIT Gauge (v2.1)
+title: KH1FM Exact Five-Slot LIMIT Gauge (v2.2)
 originalAuthor: Raven Fang
 description: >-
-  Rebuilds the five-slot LIMIT gauge from the supplied redesigned images and
-  displays it at half scale by default. Empty slots use gray shading and a
-  black stepped back; filled slots use red shading with a cyan-teal outline at
-  20, 40, 60, 80, and 100 LIMIT. Position and scale are adjustable in Lua.
-  Native portrait, HP, MP, labels, textures, and MDLS files remain untouched.
+  Reproduces the supplied empty and full five-slot LIMIT gauge references
+  exactly at the default settings. Slots use the exact sampled gray, black,
+  red, dark-red, and cyan-teal colors and fill at 20, 40, 60, 80, and 100
+  LIMIT. Position and scale remain adjustable in Lua. Native portrait, HP, MP,
+  labels, textures, and MDLS files remain untouched.
 logo: icon.png
 game: kh1
 assets:
-  - name: scripts/ZZZ_KH1FM_LIMIT_Gauge_v2_1_RedesignedHalfScale.lua
+  - name: scripts/ZZZ_KH1FM_LIMIT_Gauge_v2_2_ExactReference.lua
     platform: pc
     method: copy
     source:
-      - name: scripts/ZZZ_KH1FM_LIMIT_Gauge_v2_1_RedesignedHalfScale.lua
+      - name: scripts/ZZZ_KH1FM_LIMIT_Gauge_v2_2_ExactReference.lua
