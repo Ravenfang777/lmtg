@@ -1,9 +1,9 @@
-LUAGUI_NAME = "KH1FM LIMIT Gauge v2 Adjustable Slots"
+LUAGUI_NAME = "KH1FM LIMIT Gauge v2.1 Redesigned Half Scale"
 LUAGUI_AUTH = "OpenAI"
-LUAGUI_DESC = "Adds an adjustable five-slot black/red/teal LIMIT gauge and red LIMIT label."
+LUAGUI_DESC = "Adds the redesigned adjustable LIMIT gauge at half scale by default."
 
 --[[
-    KH1FM LIMIT GAUGE v2 -- ADJUSTABLE FIVE-SLOT LAYOUT
+    KH1FM LIMIT GAUGE v2.1 -- REDESIGNED HALF-SCALE LAYOUT
     Target: KINGDOM HEARTS FINAL MIX.exe, Steam Global 1.0.0.2
     SHA-256: d790746245d26159f3ee0e1060e33b2fa2de06941850a4ac724f598722884bac
     Runtime: LuaBackendHook v1.9.1-hook / LuaEngine v5.0
@@ -15,10 +15,13 @@ LUAGUI_DESC = "Adds an adjustable five-slot black/red/teal LIMIT gauge and red L
       * Uses KH1's native solid-rectangle and ASCII-font renderers after the
         complete player HUD loop. No DDS replacement, UV remap, resource
         capture, or sprite suppression is involved.
-      * Keeps all five black gauge backs visible. Each complete slot changes
-        to a red fill with a cyan-teal outline at its 20-point threshold.
-      * Reconstructs the supplied "LIMIT V2.png" proportions in a compact
-        256x65 native-HUD layout whose base origin is X=0, Y=0.
+      * Keeps the redesigned gray/black gauge backs visible. Each complete
+        slot changes to a shaded red fill with a cyan-teal outline at its
+        20-point threshold.
+      * Reconstructs the supplied redesigned 640x448 reference images. Their
+        meaningful source footprint is X=30..253 and Y=4..63.
+      * Defaults to SCALE=0.50, producing an approximately 112x30-pixel
+        footprint while keeping X=0, Y=0 as the adjustable base origin.
       * Reads the published LIMIT v1.6 interface without changing LIMIT.
 
     DISCRETE FILL
@@ -55,43 +58,72 @@ local CONFIG = {
     ORIGIN = {
         X = 0,
         Y = 0,
-        SCALE = 1.0,
+        -- 0.50 is approximately half the redesigned source size.
+        -- Examples: 0.75 = three-quarter size; 1.00 = source size.
+        SCALE = 0.50,
     },
 
-    -- Relative layout reconstructed from the bottom composite in
-    -- "LIMIT V2.png". Coordinates are relative to ORIGIN.
+    -- Exact slot bounds reconstructed from the two redesigned images.
+    -- Coordinates are relative to ORIGIN and are multiplied by SCALE.
     LAYOUT = {
         BASELINE_Y = 64,
-        NOTCH_Y = 42,
-        SLOPE_HEIGHT = 8,
         OUTLINE = 1,
 
-        -- Each slot remains independently adjustable.
+        -- BACK_* describes the black stair-step gap after each slot.
+        -- Slot 5 uses it for the lower-right cutout.
         BLOCKS = {
-            { X = 61,  Y = 39, WIDTH = 34, NOTCH_WIDTH = 2 },
-            { X = 99,  Y = 29, WIDTH = 34, NOTCH_WIDTH = 2 },
-            { X = 138, Y = 20, WIDTH = 34, NOTCH_WIDTH = 2 },
-            { X = 176, Y = 10, WIDTH = 35, NOTCH_WIDTH = 3 },
-            { X = 214, Y = 0,  WIDTH = 40, NOTCH_WIDTH = 7 },
+            {
+                X = 61, Y = 44, WIDTH = 33,
+                BACK_X = 94, BACK_Y = 44, BACK_WIDTH = 5,
+            },
+            {
+                X = 99, Y = 34, WIDTH = 34,
+                BACK_X = 133, BACK_Y = 34, BACK_WIDTH = 5,
+            },
+            {
+                X = 138, Y = 24, WIDTH = 34,
+                BACK_X = 172, BACK_Y = 24, BACK_WIDTH = 4,
+            },
+            {
+                X = 176, Y = 14, WIDTH = 35,
+                BACK_X = 211, BACK_Y = 14, BACK_WIDTH = 3,
+            },
+            {
+                X = 214, Y = 4, WIDTH = 40,
+                BACK_X = 248, BACK_Y = 43, BACK_WIDTH = 6,
+            },
         },
     },
 
     LABEL = {
         ENABLE = true,
         TEXT = "LIMIT",
-        X = 2,
-        Y = 52,
+        X = 30,
+        Y = 54,
         COLOR = 0x800000FF,
-        FONT_SIZE = 8,
+        FONT_SIZE = 10,
     },
 
     COLORS = {
         -- KH1 HUD colors use AABBGGRR; 0x80 is full native HUD opacity.
         FILLED_OUTLINE = 0x80FFC000,
-        FILLED_RED = 0x800000FF,
         EMPTY_OUTLINE = 0x804A4A4A,
-        EMPTY_BACK = 0x80000000,
-        NOTCH_BACK = 0x80000000,
+
+        -- Four left-to-right shading bands reconstructed from the images.
+        FILLED_BANDS = {
+            0x80111472,
+            0x80161CBE,
+            0x80181FEC,
+            0x80131792,
+        },
+        EMPTY_BANDS = {
+            0x80272727,
+            0x80464646,
+            0x80555555,
+            0x80272727,
+        },
+
+        BLACK_BACK = 0x80000000,
     },
 
     -- Kept as a named setting so all threshold logic stays explicit.
@@ -109,7 +141,7 @@ local CONFIG = {
 -- VERIFIED BUILD CONSTANTS -- DO NOT EDIT
 -- =========================================================================
 
-local PREFIX = "[LimitGaugeV2] "
+local PREFIX = "[LimitGaugeV2.1] "
 
 local VERSION_SENTINEL_RVA = 0x3B2271
 local VERSION_VALUE = 0x7265737563697065
@@ -348,6 +380,21 @@ local function addRectangle(rectangles, x, y, width, height, color)
     }
 end
 
+local function addRectangleEdges(rectangles, left, top, right, bottom, color)
+    local resolvedLeft = round(left)
+    local resolvedTop = round(top)
+    local resolvedRight = round(right)
+    local resolvedBottom = round(bottom)
+    addRectangle(
+        rectangles,
+        resolvedLeft,
+        resolvedTop,
+        math.max(1, resolvedRight - resolvedLeft),
+        math.max(1, resolvedBottom - resolvedTop),
+        color
+    )
+end
+
 local function addBlock(rectangles, block, filled)
     local scale = CONFIG.ORIGIN.SCALE
     local layout = CONFIG.LAYOUT
@@ -355,73 +402,65 @@ local function addBlock(rectangles, block, filled)
     local outlineColor = filled
         and colors.FILLED_OUTLINE
         or colors.EMPTY_OUTLINE
-    local fillColor = filled
-        and colors.FILLED_RED
-        or colors.EMPTY_BACK
+    local bands = filled
+        and colors.FILLED_BANDS
+        or colors.EMPTY_BANDS
 
-    local x = CONFIG.ORIGIN.X + block.X * scale
-    local y = CONFIG.ORIGIN.Y + block.Y * scale
-    local width = block.WIDTH * scale
-    local baseline = CONFIG.ORIGIN.Y + layout.BASELINE_Y * scale
-    local notchY = CONFIG.ORIGIN.Y + layout.NOTCH_Y * scale
-    local slope = math.max(2, round(layout.SLOPE_HEIGHT * scale))
+    local left = round(CONFIG.ORIGIN.X + block.X * scale)
+    local top = round(CONFIG.ORIGIN.Y + block.Y * scale)
+    local right = round(
+        CONFIG.ORIGIN.X + (block.X + block.WIDTH) * scale
+    )
+    local bottom = round(
+        CONFIG.ORIGIN.Y + layout.BASELINE_Y * scale
+    )
     local outline = math.max(1, round(layout.OUTLINE * scale))
-    local halfSlope = math.max(1, round(slope / 2))
-    local halfWidth = math.max(2, round(width / 2))
-    local notchWidth = math.max(outline + 1,
-        round(block.NOTCH_WIDTH * scale))
+    local innerLeft = left + outline
+    local innerTop = top + outline
+    local innerRight = math.max(innerLeft + 1, right - outline)
+    local innerBottom = math.max(innerTop + 1, bottom - outline)
+    local innerWidth = math.max(1, innerRight - innerLeft)
 
     -- Six records per slot:
-    --   1-2: two-step sloped outer silhouette
-    --   3-4: matching black/red interior
-    --   5-6: right-side notch and its inner vertical edge
-    addRectangle(
+    --   1: complete outline
+    --   2-5: four horizontal shading bands
+    --   6: black stair-step gap, or slot 5's lower-right cutout
+    addRectangleEdges(
         rectangles,
-        x,
-        y + halfSlope,
-        width,
-        baseline - (y + halfSlope),
+        left,
+        top,
+        right,
+        bottom,
         outlineColor
     )
-    addRectangle(
+
+    local bandIndex
+    for bandIndex = 1, 4 do
+        local bandLeft = innerLeft
+            + math.floor(innerWidth * (bandIndex - 1) / 4)
+        local bandRight = innerLeft
+            + math.floor(innerWidth * bandIndex / 4)
+        if bandIndex == 4 then
+            bandRight = innerRight
+        end
+        addRectangleEdges(
+            rectangles,
+            bandLeft,
+            innerTop,
+            math.max(bandLeft + 1, bandRight),
+            innerBottom,
+            bands[bandIndex]
+        )
+    end
+
+    addRectangleEdges(
         rectangles,
-        x + halfWidth,
-        y,
-        width - halfWidth,
-        halfSlope,
-        outlineColor
-    )
-    addRectangle(
-        rectangles,
-        x + outline,
-        y + halfSlope + outline,
-        width - 2 * outline,
-        baseline - (y + halfSlope) - 2 * outline,
-        fillColor
-    )
-    addRectangle(
-        rectangles,
-        x + halfWidth + outline,
-        y + outline,
-        width - halfWidth - 2 * outline,
-        math.max(1, halfSlope - 2 * outline),
-        fillColor
-    )
-    addRectangle(
-        rectangles,
-        x + width - notchWidth,
-        notchY,
-        notchWidth,
-        baseline - notchY,
-        colors.NOTCH_BACK
-    )
-    addRectangle(
-        rectangles,
-        x + width - notchWidth,
-        notchY,
-        outline,
-        baseline - notchY,
-        outlineColor
+        CONFIG.ORIGIN.X + block.BACK_X * scale,
+        CONFIG.ORIGIN.Y + block.BACK_Y * scale,
+        CONFIG.ORIGIN.X
+            + (block.BACK_X + block.BACK_WIDTH) * scale,
+        CONFIG.ORIGIN.Y + layout.BASELINE_Y * scale,
+        colors.BLACK_BACK
     )
 end
 
@@ -472,7 +511,7 @@ local function labelBytes()
     appendU32(bytes, round(CONFIG.ORIGIN.X + label.X * scale))
     appendU32(bytes, round(CONFIG.ORIGIN.Y + label.Y * scale))
     appendU32(bytes, label.COLOR)
-    appendU32(bytes, clamp(round(label.FONT_SIZE * scale), 6, 32))
+    appendU32(bytes, clamp(round(label.FONT_SIZE * scale), 4, 32))
     local text = tostring(label.TEXT or "")
     local index
     for index = 1, 8 do
@@ -557,9 +596,6 @@ local function validateConfiguration()
         or type(CONFIG.LAYOUT.BLOCKS) ~= "table"
         or #CONFIG.LAYOUT.BLOCKS ~= 5
         or type(CONFIG.LAYOUT.BASELINE_Y) ~= "number"
-        or type(CONFIG.LAYOUT.NOTCH_Y) ~= "number"
-        or type(CONFIG.LAYOUT.SLOPE_HEIGHT) ~= "number"
-        or CONFIG.LAYOUT.SLOPE_HEIGHT < 2
         or type(CONFIG.LAYOUT.OUTLINE) ~= "number"
         or CONFIG.LAYOUT.OUTLINE < 1
     then
@@ -572,11 +608,13 @@ local function validateConfiguration()
             or type(block.X) ~= "number"
             or type(block.Y) ~= "number"
             or type(block.WIDTH) ~= "number"
-            or type(block.NOTCH_WIDTH) ~= "number"
+            or type(block.BACK_X) ~= "number"
+            or type(block.BACK_Y) ~= "number"
+            or type(block.BACK_WIDTH) ~= "number"
             or block.WIDTH < 8
-            or block.NOTCH_WIDTH < 2
-            or block.NOTCH_WIDTH >= block.WIDTH
+            or block.BACK_WIDTH < 1
             or block.Y >= CONFIG.LAYOUT.BASELINE_Y - 4
+            or block.BACK_Y >= CONFIG.LAYOUT.BASELINE_Y
         then
             return false, "LAYOUT.BLOCKS[" .. tostring(index)
                 .. "] is invalid"
@@ -590,19 +628,21 @@ local function validateConfiguration()
         or type(CONFIG.LABEL.X) ~= "number"
         or type(CONFIG.LABEL.Y) ~= "number"
         or type(CONFIG.LABEL.FONT_SIZE) ~= "number"
-        or CONFIG.LABEL.FONT_SIZE < 6
+        or CONFIG.LABEL.FONT_SIZE < 4
         or CONFIG.LABEL.FONT_SIZE > 32
     then
         return false, "LABEL settings are invalid"
     end
     local colors = {
         CONFIG.COLORS.FILLED_OUTLINE,
-        CONFIG.COLORS.FILLED_RED,
         CONFIG.COLORS.EMPTY_OUTLINE,
-        CONFIG.COLORS.EMPTY_BACK,
-        CONFIG.COLORS.NOTCH_BACK,
+        CONFIG.COLORS.BLACK_BACK,
         CONFIG.LABEL.COLOR,
     }
+    for index = 1, 4 do
+        colors[#colors + 1] = CONFIG.COLORS.FILLED_BANDS[index]
+        colors[#colors + 1] = CONFIG.COLORS.EMPTY_BANDS[index]
+    end
     for index = 1, #colors do
         if type(colors[index]) ~= "number"
             or colors[index] < 0
@@ -902,7 +942,7 @@ function _OnFrame()
         end
 
         runtime.installed = true
-        log("READY: adjustable five-slot LIMIT gauge; "
+        log("READY: redesigned half-scale five-slot LIMIT gauge; "
             .. tostring(installReason) .. ".")
         log("NATIVE HUD PRESERVED: portrait, HP, MP, labels, and textures are untouched.")
         log("LAYOUT: base origin X=" .. tostring(CONFIG.ORIGIN.X)
