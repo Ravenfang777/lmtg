@@ -1,0 +1,15 @@
+title: KH1FM Five-Block LIMIT Gauge (v1 Native Geometry)
+originalAuthor: Raven Fang
+description: >-
+  Adds only a five-block teal-and-pink LIMIT gauge to KH1FM Steam Global.
+  One complete block appears at 20, 40, 60, 80, and 100 LIMIT. Sora's native
+  portrait, HP, MP, labels, gauge packets, and textures remain untouched.
+  Uses native HUD geometry and requires LuaBackendHook.
+logo: icon.png
+game: kh1
+assets:
+  - name: scripts/ZZZ_KH1FM_LIMIT_Gauge_v1_NativeGeometry.lua
+    platform: pc
+    method: copy
+    source:
+      - name: scripts/ZZZ_KH1FM_LIMIT_Gauge_v1_NativeGeometry.lua
