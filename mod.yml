@@ -1,15 +1,16 @@
-title: KH1FM Five-Block LIMIT Gauge (v1 Native Geometry)
+title: KH1FM Adjustable Five-Slot LIMIT Gauge (v2)
 originalAuthor: Raven Fang
 description: >-
-  Adds only a five-block teal-and-pink LIMIT gauge to KH1FM Steam Global.
-  One complete block appears at 20, 40, 60, 80, and 100 LIMIT. Sora's native
-  portrait, HP, MP, labels, gauge packets, and textures remain untouched.
-  Uses native HUD geometry and requires LuaBackendHook.
+  Adds a red LIMIT label and five persistent shaped black slots to KH1FM Steam
+  Global. One slot changes to a red fill with a cyan-teal outline at 20, 40,
+  60, 80, and 100 LIMIT. The complete layout defaults to X=0, Y=0 and is
+  adjustable through a single origin/scale block. Uses native HUD geometry and
+  replaces no DDS or MDLS asset.
 logo: icon.png
 game: kh1
 assets:
-  - name: scripts/ZZZ_KH1FM_LIMIT_Gauge_v1_NativeGeometry.lua
+  - name: scripts/ZZZ_KH1FM_LIMIT_Gauge_v2_AdjustableSlots.lua
     platform: pc
     method: copy
     source:
-      - name: scripts/ZZZ_KH1FM_LIMIT_Gauge_v1_NativeGeometry.lua
+      - name: scripts/ZZZ_KH1FM_LIMIT_Gauge_v2_AdjustableSlots.lua

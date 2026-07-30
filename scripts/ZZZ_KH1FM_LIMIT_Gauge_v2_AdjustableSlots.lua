@@ -1,29 +1,33 @@
-LUAGUI_NAME = "KH1FM LIMIT Gauge v1 Native Geometry"
+LUAGUI_NAME = "KH1FM LIMIT Gauge v2 Adjustable Slots"
 LUAGUI_AUTH = "OpenAI"
-LUAGUI_DESC = "Adds five discrete teal-and-pink LIMIT chunks without replacing Sora's native HUD or any texture."
+LUAGUI_DESC = "Adds an adjustable five-slot black/red/teal LIMIT gauge and red LIMIT label."
 
 --[[
-    KH1FM LIMIT GAUGE v1 -- NATIVE GEOMETRY
+    KH1FM LIMIT GAUGE v2 -- ADJUSTABLE FIVE-SLOT LAYOUT
     Target: KINGDOM HEARTS FINAL MIX.exe, Steam Global 1.0.0.2
     SHA-256: d790746245d26159f3ee0e1060e33b2fa2de06941850a4ac724f598722884bac
     Runtime: LuaBackendHook v1.9.1-hook / LuaEngine v5.0
 
     PURPOSE
-      * Adds only the five-block LIMIT gauge.
+      * Adds only the five-slot LIMIT gauge and its LIMIT label.
       * Leaves Sora's native portrait, HP gauge, MP gauge, labels, textures,
         and all native player-HUD packets untouched.
-      * Uses KH1's native solid-rectangle renderer after the complete player
-        HUD loop. No DDS replacement, UV remap, resource capture, or sprite
-        suppression is involved.
+      * Uses KH1's native solid-rectangle and ASCII-font renderers after the
+        complete player HUD loop. No DDS replacement, UV remap, resource
+        capture, or sprite suppression is involved.
+      * Keeps all five black gauge backs visible. Each complete slot changes
+        to a red fill with a cyan-teal outline at its 20-point threshold.
+      * Reconstructs the supplied "LIMIT V2.png" proportions in a compact
+        256x65 native-HUD layout whose base origin is X=0, Y=0.
       * Reads the published LIMIT v1.6 interface without changing LIMIT.
 
     DISCRETE FILL
-          0..19   = no blocks
-         20..39   = block 1
-         40..59   = blocks 1-2
-         60..79   = blocks 1-3
-         80..99   = blocks 1-4
-        100       = blocks 1-5
+          0..19   = five black backs
+         20..39   = slot 1 filled
+         40..59   = slots 1-2 filled
+         60..79   = slots 1-3 filled
+         80..99   = slots 1-4 filled
+        100       = slots 1-5 filled
 
     COMPATIBILITY
       * Provides the two minimal pass-through signatures required by Enemy HP
@@ -46,21 +50,55 @@ local CONFIG = {
     ENABLE = true,
     LOG_VALUE_CHANGES = false,
 
-    -- Exact native 640x448 coordinates reconstructed from
-    -- "Limit Fill 5 Blocks(3).png".
-    GAUGE = {
+    -- Move or resize the complete label + five-slot layout here.
+    -- X=0, Y=0 is the requested base location.
+    ORIGIN = {
         X = 0,
         Y = 0,
         SCALE = 1.0,
     },
 
-    -- KH1 HUD colors are AABBGGRR; 0x80 is full native HUD opacity.
-    OUTLINE_COLOR = 0x80F4FF7E,
-    FILL_EDGE_COLOR = 0x80C200EE,
-    FILL_CENTER_COLOR = 0x803F00EE,
+    -- Relative layout reconstructed from the bottom composite in
+    -- "LIMIT V2.png". Coordinates are relative to ORIGIN.
+    LAYOUT = {
+        BASELINE_Y = 64,
+        NOTCH_Y = 42,
+        SLOPE_HEIGHT = 8,
+        OUTLINE = 1,
 
-    POINTS_PER_BLOCK = 20,
-    MAX_BLOCKS = 5,
+        -- Each slot remains independently adjustable.
+        BLOCKS = {
+            { X = 61,  Y = 39, WIDTH = 34, NOTCH_WIDTH = 2 },
+            { X = 99,  Y = 29, WIDTH = 34, NOTCH_WIDTH = 2 },
+            { X = 138, Y = 20, WIDTH = 34, NOTCH_WIDTH = 2 },
+            { X = 176, Y = 10, WIDTH = 35, NOTCH_WIDTH = 3 },
+            { X = 214, Y = 0,  WIDTH = 40, NOTCH_WIDTH = 7 },
+        },
+    },
+
+    LABEL = {
+        ENABLE = true,
+        TEXT = "LIMIT",
+        X = 2,
+        Y = 52,
+        COLOR = 0x800000FF,
+        FONT_SIZE = 8,
+    },
+
+    COLORS = {
+        -- KH1 HUD colors use AABBGGRR; 0x80 is full native HUD opacity.
+        FILLED_OUTLINE = 0x80FFC000,
+        FILLED_RED = 0x800000FF,
+        EMPTY_OUTLINE = 0x804A4A4A,
+        EMPTY_BACK = 0x80000000,
+        NOTCH_BACK = 0x80000000,
+    },
+
+    -- Kept as a named setting so all threshold logic stays explicit.
+    GAUGE = {
+        POINTS_PER_BLOCK = 20,
+        MAX_BLOCKS = 5,
+    },
 
     -- Visual-only test. -1 uses live LIMIT. Set to 100 to force all five
     -- blocks without changing gameplay LIMIT, then return it to -1.
@@ -71,7 +109,7 @@ local CONFIG = {
 -- VERIFIED BUILD CONSTANTS -- DO NOT EDIT
 -- =========================================================================
 
-local PREFIX = "[LimitGaugeV1] "
+local PREFIX = "[LimitGaugeV2] "
 
 local VERSION_SENTINEL_RVA = 0x3B2271
 local VERSION_VALUE = 0x7265737563697065
@@ -120,15 +158,17 @@ local CAVE_RVA = 0x3AF300
 local CODE_SIZE = 0x100
 local DATA_RVA = 0x3AF400
 local DATA_SIZE = 0x300
-local DATA_SENTINEL = 0x314D494C
+local DATA_SENTINEL = 0x324D494C
 local RECTANGLE_RECORDS_OFFSET = 0x08
 local RECTANGLE_RECORD_SIZE = 0x18
-local MAX_RECTANGLES = 31
+local MAX_RECTANGLES = 30
+local LABEL_RECORD_OFFSET = 0x2D8
+local LABEL_RECORD_SIZE = 0x20
 
 -- Assembled for module+0x3AF300. It contains:
 --   +0x000 minimal native player-HUD pass-through
 --   +0x080 minimal final-render pass-through
---   +0x088 post-loop LIMIT rectangle traversal
+--   +0x088 post-loop LIMIT rectangle traversal and native-font label
 local CAVE_CODE = {
     0x53, 0x48, 0x83, 0xEC, 0x20, 0x48, 0x89, 0xCB, 0x48, 0x8B, 0x41, 0x08, 0x48, 0x85, 0xC0, 0x74,
     0x00, 0x48, 0x89, 0xD9, 0xE8, 0x77, 0xDC, 0xEB, 0xFF, 0x48, 0x83, 0xC4, 0x20, 0x5B, 0xC3, 0x00,
@@ -141,10 +181,10 @@ local CAVE_CODE = {
     0xE9, 0xEB, 0x00, 0xED, 0xFF, 0x00, 0x00, 0x00, 0x53, 0x56, 0x48, 0x83, 0xEC, 0x30, 0x8B, 0x1D,
     0x6C, 0x00, 0x00, 0x00, 0x85, 0xDB, 0x74, 0x1E, 0x48, 0x8D, 0x35, 0x69, 0x00, 0x00, 0x00, 0x8B,
     0x0E, 0x48, 0x8B, 0x56, 0x08, 0x4C, 0x8B, 0x46, 0x10, 0xE8, 0xE2, 0x72, 0xD9, 0xFF, 0x48, 0x83,
-    0xC6, 0x18, 0xFF, 0xCB, 0x75, 0xE9, 0x48, 0x83, 0xC4, 0x30, 0x5E, 0x5B, 0x0F, 0x28, 0xBC, 0x24,
-    0xA0, 0x00, 0x00, 0x00, 0xE9, 0x67, 0xEC, 0xEB, 0xFF, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0xC6, 0x18, 0xFF, 0xCB, 0x75, 0xE9, 0x48, 0x8D, 0x35, 0x1B, 0x03, 0x00, 0x00, 0x83, 0x3E, 0x00,
+    0x74, 0x1A, 0x8B, 0x4E, 0x0C, 0x8B, 0x56, 0x04, 0x44, 0x8B, 0x46, 0x08, 0x4C, 0x8D, 0x4E, 0x14,
+    0x8B, 0x46, 0x10, 0x89, 0x44, 0x24, 0x20, 0xE8, 0x14, 0x07, 0xF2, 0xFF, 0x48, 0x83, 0xC4, 0x30,
+    0x5E, 0x5B, 0x0F, 0x28, 0xBC, 0x24, 0xA0, 0x00, 0x00, 0x00, 0xE9, 0x41, 0xEC, 0xEB, 0xFF, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 }
 
@@ -157,14 +197,6 @@ end
 for zeroIndex = 1, DATA_SIZE do
     ZERO_DATA[zeroIndex] = 0
 end
-
-local BLOCKS = {
-    { X = 0,  Y = 19, WIDTH = 10, HEIGHT = 8,  CAP_ROWS = 3 },
-    { X = 11, Y = 15, WIDTH = 10, HEIGHT = 12, CAP_ROWS = 3 },
-    { X = 22, Y = 11, WIDTH = 10, HEIGHT = 16, CAP_ROWS = 3 },
-    { X = 33, Y = 7,  WIDTH = 10, HEIGHT = 20, CAP_ROWS = 3 },
-    { X = 44, Y = 0,  WIDTH = 14, HEIGHT = 27, CAP_ROWS = 4 },
-}
 
 local runtime = {
     installed = false,
@@ -316,71 +348,92 @@ local function addRectangle(rectangles, x, y, width, height, color)
     }
 end
 
-local function addBlock(rectangles, block)
-    local scale = CONFIG.GAUGE.SCALE
-    local x = CONFIG.GAUGE.X + block.X * scale
-    local y = CONFIG.GAUGE.Y + block.Y * scale
-    local width = block.WIDTH * scale
-    local height = block.HEIGHT * scale
-    local unit = math.max(1, round(scale))
-    local capRows = block.CAP_ROWS
+local function addBlock(rectangles, block, filled)
+    local scale = CONFIG.ORIGIN.SCALE
+    local layout = CONFIG.LAYOUT
+    local colors = CONFIG.COLORS
+    local outlineColor = filled
+        and colors.FILLED_OUTLINE
+        or colors.EMPTY_OUTLINE
+    local fillColor = filled
+        and colors.FILLED_RED
+        or colors.EMPTY_BACK
 
-    -- Teal outer silhouette. The cap rows create the rising diagonal top;
-    -- the body supplies both sides and the bottom edge.
+    local x = CONFIG.ORIGIN.X + block.X * scale
+    local y = CONFIG.ORIGIN.Y + block.Y * scale
+    local width = block.WIDTH * scale
+    local baseline = CONFIG.ORIGIN.Y + layout.BASELINE_Y * scale
+    local notchY = CONFIG.ORIGIN.Y + layout.NOTCH_Y * scale
+    local slope = math.max(2, round(layout.SLOPE_HEIGHT * scale))
+    local outline = math.max(1, round(layout.OUTLINE * scale))
+    local halfSlope = math.max(1, round(slope / 2))
+    local halfWidth = math.max(2, round(width / 2))
+    local notchWidth = math.max(outline + 1,
+        round(block.NOTCH_WIDTH * scale))
+
+    -- Six records per slot:
+    --   1-2: two-step sloped outer silhouette
+    --   3-4: matching black/red interior
+    --   5-6: right-side notch and its inner vertical edge
     addRectangle(
         rectangles,
         x,
-        y + capRows * unit,
+        y + halfSlope,
         width,
-        height - capRows * unit,
-        CONFIG.OUTLINE_COLOR
+        baseline - (y + halfSlope),
+        outlineColor
     )
-
-    if capRows == 4 then
-        addRectangle(rectangles, x + width - 2 * unit, y,
-            2 * unit, unit, CONFIG.OUTLINE_COLOR)
-        addRectangle(rectangles, x + width - 4 * unit, y + unit,
-            4 * unit, unit, CONFIG.OUTLINE_COLOR)
-        addRectangle(rectangles, x + width - 7 * unit, y + 2 * unit,
-            7 * unit, unit, CONFIG.OUTLINE_COLOR)
-        addRectangle(rectangles, x + width - 10 * unit, y + 3 * unit,
-            10 * unit, unit, CONFIG.OUTLINE_COLOR)
-    else
-        addRectangle(rectangles, x + width - 3 * unit, y,
-            3 * unit, unit, CONFIG.OUTLINE_COLOR)
-        addRectangle(rectangles, x + width - 6 * unit, y + unit,
-            6 * unit, unit, CONFIG.OUTLINE_COLOR)
-        addRectangle(rectangles, x + width - 8 * unit, y + 2 * unit,
-            8 * unit, unit, CONFIG.OUTLINE_COLOR)
-    end
-
-    -- Pink outer fill with the deep red center visible in the supplied art.
     addRectangle(
         rectangles,
-        x + 2 * unit,
-        y + capRows * unit,
-        width - 4 * unit,
-        height - (capRows + 2) * unit,
-        CONFIG.FILL_EDGE_COLOR
+        x + halfWidth,
+        y,
+        width - halfWidth,
+        halfSlope,
+        outlineColor
     )
-    local centerHeight = height - (capRows + 7) * unit
-    if centerHeight > 0 then
-        addRectangle(
-            rectangles,
-            x + 2 * unit,
-            y + (capRows + 3) * unit,
-            width - 4 * unit,
-            centerHeight,
-            CONFIG.FILL_CENTER_COLOR
-        )
-    end
+    addRectangle(
+        rectangles,
+        x + outline,
+        y + halfSlope + outline,
+        width - 2 * outline,
+        baseline - (y + halfSlope) - 2 * outline,
+        fillColor
+    )
+    addRectangle(
+        rectangles,
+        x + halfWidth + outline,
+        y + outline,
+        width - halfWidth - 2 * outline,
+        math.max(1, halfSlope - 2 * outline),
+        fillColor
+    )
+    addRectangle(
+        rectangles,
+        x + width - notchWidth,
+        notchY,
+        notchWidth,
+        baseline - notchY,
+        colors.NOTCH_BACK
+    )
+    addRectangle(
+        rectangles,
+        x + width - notchWidth,
+        notchY,
+        outline,
+        baseline - notchY,
+        outlineColor
+    )
 end
 
 local function buildRectangles(blockCount)
     local rectangles = {}
     local index
-    for index = 1, blockCount do
-        addBlock(rectangles, BLOCKS[index])
+    for index = 1, CONFIG.GAUGE.MAX_BLOCKS do
+        addBlock(
+            rectangles,
+            CONFIG.LAYOUT.BLOCKS[index],
+            index <= blockCount
+        )
     end
     return rectangles
 end
@@ -411,6 +464,28 @@ local function serializeRectangles(rectangles)
     return bytes
 end
 
+local function labelBytes()
+    local bytes = {}
+    local label = CONFIG.LABEL
+    local scale = CONFIG.ORIGIN.SCALE
+    appendU32(bytes, label.ENABLE and 1 or 0)
+    appendU32(bytes, round(CONFIG.ORIGIN.X + label.X * scale))
+    appendU32(bytes, round(CONFIG.ORIGIN.Y + label.Y * scale))
+    appendU32(bytes, label.COLOR)
+    appendU32(bytes, clamp(round(label.FONT_SIZE * scale), 6, 32))
+    local text = tostring(label.TEXT or "")
+    local index
+    for index = 1, 8 do
+        if index <= #text then
+            bytes[#bytes + 1] = string.byte(text, index)
+        else
+            bytes[#bytes + 1] = 0
+        end
+    end
+    appendU32(bytes, 0)
+    return bytes
+end
+
 local function publishRectangles(rectangles)
     local records, reason = serializeRectangles(rectangles)
     if records == nil then
@@ -430,6 +505,10 @@ local function publishRectangles(rectangles)
     end
     for index = 1, #records do
         image[RECTANGLE_RECORDS_OFFSET + index] = records[index]
+    end
+    local label = labelBytes()
+    for index = 1, #label do
+        image[LABEL_RECORD_OFFSET + index] = label[index]
     end
 
     local ok
@@ -460,24 +539,70 @@ local function buildIsExact()
 end
 
 local function validateConfiguration()
-    if type(CONFIG.GAUGE) ~= "table"
-        or type(CONFIG.GAUGE.X) ~= "number"
-        or type(CONFIG.GAUGE.Y) ~= "number"
-        or type(CONFIG.GAUGE.SCALE) ~= "number"
-        or CONFIG.GAUGE.SCALE <= 0
-        or CONFIG.GAUGE.SCALE > 4
+    if type(CONFIG.ORIGIN) ~= "table"
+        or type(CONFIG.ORIGIN.X) ~= "number"
+        or type(CONFIG.ORIGIN.Y) ~= "number"
+        or type(CONFIG.ORIGIN.SCALE) ~= "number"
+        or CONFIG.ORIGIN.SCALE <= 0
+        or CONFIG.ORIGIN.SCALE > 4
     then
-        return false, "GAUGE X/Y/SCALE is invalid"
+        return false, "ORIGIN X/Y/SCALE is invalid"
     end
-    if CONFIG.POINTS_PER_BLOCK ~= 20 or CONFIG.MAX_BLOCKS ~= 5 then
+    if CONFIG.GAUGE.POINTS_PER_BLOCK ~= 20
+        or CONFIG.GAUGE.MAX_BLOCKS ~= 5
+    then
         return false, "this exact gauge requires 20 points and five blocks"
     end
-    local colors = {
-        CONFIG.OUTLINE_COLOR,
-        CONFIG.FILL_EDGE_COLOR,
-        CONFIG.FILL_CENTER_COLOR,
-    }
+    if type(CONFIG.LAYOUT) ~= "table"
+        or type(CONFIG.LAYOUT.BLOCKS) ~= "table"
+        or #CONFIG.LAYOUT.BLOCKS ~= 5
+        or type(CONFIG.LAYOUT.BASELINE_Y) ~= "number"
+        or type(CONFIG.LAYOUT.NOTCH_Y) ~= "number"
+        or type(CONFIG.LAYOUT.SLOPE_HEIGHT) ~= "number"
+        or CONFIG.LAYOUT.SLOPE_HEIGHT < 2
+        or type(CONFIG.LAYOUT.OUTLINE) ~= "number"
+        or CONFIG.LAYOUT.OUTLINE < 1
+    then
+        return false, "LAYOUT settings are invalid"
+    end
     local index
+    for index = 1, 5 do
+        local block = CONFIG.LAYOUT.BLOCKS[index]
+        if type(block) ~= "table"
+            or type(block.X) ~= "number"
+            or type(block.Y) ~= "number"
+            or type(block.WIDTH) ~= "number"
+            or type(block.NOTCH_WIDTH) ~= "number"
+            or block.WIDTH < 8
+            or block.NOTCH_WIDTH < 2
+            or block.NOTCH_WIDTH >= block.WIDTH
+            or block.Y >= CONFIG.LAYOUT.BASELINE_Y - 4
+        then
+            return false, "LAYOUT.BLOCKS[" .. tostring(index)
+                .. "] is invalid"
+        end
+    end
+    if type(CONFIG.LABEL) ~= "table"
+        or type(CONFIG.LABEL.TEXT) ~= "string"
+        or #CONFIG.LABEL.TEXT < 1
+        or #CONFIG.LABEL.TEXT > 7
+        or string.find(CONFIG.LABEL.TEXT, "[^ -~]") ~= nil
+        or type(CONFIG.LABEL.X) ~= "number"
+        or type(CONFIG.LABEL.Y) ~= "number"
+        or type(CONFIG.LABEL.FONT_SIZE) ~= "number"
+        or CONFIG.LABEL.FONT_SIZE < 6
+        or CONFIG.LABEL.FONT_SIZE > 32
+    then
+        return false, "LABEL settings are invalid"
+    end
+    local colors = {
+        CONFIG.COLORS.FILLED_OUTLINE,
+        CONFIG.COLORS.FILLED_RED,
+        CONFIG.COLORS.EMPTY_OUTLINE,
+        CONFIG.COLORS.EMPTY_BACK,
+        CONFIG.COLORS.NOTCH_BACK,
+        CONFIG.LABEL.COLOR,
+    }
     for index = 1, #colors do
         if type(colors[index]) ~= "number"
             or colors[index] < 0
@@ -493,8 +618,12 @@ local function validateConfiguration()
         return false, "PREVIEW_LIMIT must be -1 or 0..100"
     end
     local rectangles = buildRectangles(5)
-    if #rectangles > MAX_RECTANGLES then
-        return false, "full gauge exceeds the verified rectangle cache"
+    if #rectangles ~= MAX_RECTANGLES then
+        return false, "layout must generate exactly "
+            .. tostring(MAX_RECTANGLES) .. " rectangles"
+    end
+    if LABEL_RECORD_OFFSET + LABEL_RECORD_SIZE > DATA_SIZE then
+        return false, "LIMIT label exceeds the private data cache"
     end
     return true
 end
@@ -511,6 +640,16 @@ local function verifyNativeSignatures()
         PLAYER_HUD_SIGNATURE
     ) then
         return false, "native player-HUD builder signature does not match"
+    end
+    local fontSignature = {
+        0x48, 0x89, 0x5C, 0x24, 0x08, 0x48, 0x89, 0x6C,
+        0x24, 0x10, 0x48, 0x89, 0x74, 0x24, 0x18, 0x48,
+    }
+    if not arraysEqual(
+        safeReadArray(0x2CFAF0, #fontSignature),
+        fontSignature
+    ) then
+        return false, "native ASCII font renderer signature does not match"
     end
     return true
 end
@@ -610,7 +749,7 @@ local function install()
     if not codeOk then
         return false, "could not write private code: " .. tostring(codeReason)
     end
-    local dataOk, dataReason = publishRectangles({})
+    local dataOk, dataReason = publishRectangles(buildRectangles(0))
     if not dataOk then
         safeWriteArray(CAVE_RVA, ZERO_CODE)
         return false, dataReason
@@ -683,7 +822,8 @@ local function updateGauge()
     local limit, source = readLimit()
     if limit == nil then
         if runtime.lastBlocks ~= 0 then
-            local hiddenOk, hiddenReason = publishRectangles({})
+            local hiddenOk, hiddenReason =
+                publishRectangles(buildRectangles(0))
             if not hiddenOk then
                 return false, hiddenReason
             end
@@ -697,8 +837,8 @@ local function updateGauge()
     end
 
     runtime.waitingLimitLogged = false
-    local blocks = math.floor(limit / CONFIG.POINTS_PER_BLOCK)
-    blocks = clamp(blocks, 0, CONFIG.MAX_BLOCKS)
+    local blocks = math.floor(limit / CONFIG.GAUGE.POINTS_PER_BLOCK)
+    blocks = clamp(blocks, 0, CONFIG.GAUGE.MAX_BLOCKS)
     if blocks == runtime.lastBlocks then
         return true
     end
@@ -762,9 +902,12 @@ function _OnFrame()
         end
 
         runtime.installed = true
-        log("READY: five-block native-geometry LIMIT gauge; "
+        log("READY: adjustable five-slot LIMIT gauge; "
             .. tostring(installReason) .. ".")
         log("NATIVE HUD PRESERVED: portrait, HP, MP, labels, and textures are untouched.")
+        log("LAYOUT: base origin X=" .. tostring(CONFIG.ORIGIN.X)
+            .. " Y=" .. tostring(CONFIG.ORIGIN.Y)
+            .. " SCALE=" .. tostring(CONFIG.ORIGIN.SCALE) .. ".")
         log("THRESHOLDS: 20, 40, 60, 80, and 100 LIMIT.")
     end
 
