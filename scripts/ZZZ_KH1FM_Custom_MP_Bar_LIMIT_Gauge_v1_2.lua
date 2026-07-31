@@ -76,7 +76,7 @@ local CONFIG = {
     MP = {
         -- RIGHT_X is the fixed exclusive right edge. Capacity growth extends
         -- left from this point, matching all four supplied references.
-        RIGHT_X = 208,
+        RIGHT_X = 207,
         Y = 148,
         SCALE = 1.00,
 
@@ -175,8 +175,8 @@ local CONFIG = {
     LIMIT_LABEL = {
         ENABLE = true,
         TEXT = "LIMIT",
-        X = 90,
-        Y = 144,
+        X = 180,
+        Y = 244,
         COLOR = 0x800000FF,
         FONT_SIZE = 10,
     },
