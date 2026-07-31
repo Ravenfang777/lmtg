@@ -1,7 +1,8 @@
-KH1FM SMOOTH CIRCULAR HP + CUSTOM MP + PULSING LIMIT HUD v1.6
+KH1FM SMOOTH CIRCULAR HP + CUSTOM MP + PULSING LIMIT HUD v1.7
 
 INSTALLATION
-1. Disable Smooth Circular HP + Custom MP + Pulsing LIMIT HUD v1.5 and v1.4.
+1. Disable Smooth Circular HP + Custom MP + Pulsing LIMIT HUD v1.6, v1.5,
+   and v1.4.
 2. Disable Curved HP HUD v1.3.
 3. Disable Custom MP Bar + LIMIT Gauge v1/v1.1/v1.2.
 4. Disable standalone LIMIT Gauge v2.2.
@@ -12,21 +13,32 @@ INSTALLATION
    with F1.
 
 EXPECTED CONSOLE PREFIX
-[SmoothCircularHpMpLimitV1.6]
+[SmoothCircularHpMpLimitV1.7]
 
-WHAT v1.6 FIXES
+WHAT v1.7 ADDS
+- Retains every HP, MP, LIMIT, label, pulse, position, scale, color, and
+  pre-existing box value from the supplied edited v1.6 Lua.
+- Adds box 4 as an independent fixed 12x12 black rectangle at X=0, Y=0.
+- Adds box 5 as a 12x12 black maximum-HP end cap.
+- The end cap stays centered on the live maximum-HP endpoint.
+- At maximum HP 1..75, it follows the circular endpoint and rotates to the
+  curve tangent. At 76..255, it stays horizontal and follows the straight
+  extension left.
+- The end cap is rasterized as compact scanlines because the native renderer
+  has no rotated-rectangle primitive.
+- A conservative maximum-load check uses 595 of the private 678 rectangles.
+
+STABLE-FRAME BEHAVIOR RETAINED
 - Every render refresh now starts with a fresh frame list.
 - The cached HP table remains HP-only; MP changes and LIMIT pulse updates can
   no longer append themselves repeatedly until the rectangle guard stops.
-- A 2,000-refresh stress test remains fixed at 490 rectangles with the default
-  maximum HP/MP settings, below the private 678-rectangle capacity.
-- HP, MP, LIMIT, and the three black boxes use Sora's private heap allocation.
+- HP, MP, LIMIT, and all five black boxes use Sora's private heap allocation.
 - Enemy HP HUD v4.1 keeps its separate module region and render records.
 - Full-LIMIT pulse refreshes no longer set the shared rectangle count to zero.
 - HP, MP, and LIMIT remain continuously visible while the outline and LIMIT
   text change color.
 - The renderer commits each refreshed record set before publishing its count.
-- Every v1.5 visual setting and gameplay behavior is preserved.
+- Every v1.6 gameplay behavior is preserved.
 
 NEW HP TEXT
 Edit CONFIG.HP.LABEL:
@@ -40,16 +52,31 @@ FONT_SIZE
 The default text is "HP". HP, MP, and LIMIT each use one native font record.
 These text records do not count against the rectangle capacity.
 
-THREE ADJUSTABLE BLACK BOXES
-Edit CONFIG.BOXES. Each of the three entries starts with:
+FIVE ADJUSTABLE BLACK BOXES
+Edit CONFIG.BOXES. The original three entries are unchanged. Box 4 starts with:
 
 WIDTH = 12
 HEIGHT = 12
 COLOR = 0x80000000
 
-Each box has its own ENABLE, X, Y, WIDTH, HEIGHT, and COLOR setting. The boxes
-render first, allowing them to be used as independent shapes or as backing
-pieces beneath the gauges.
+X = 0
+Y = 0
+
+The first four boxes have independent ENABLE, X, Y, WIDTH, HEIGHT, and COLOR
+settings. They render first, allowing them to be used as independent shapes or
+as backing pieces beneath the gauges.
+
+Box 5 is the HP end cap. It has independent:
+
+ENABLE
+WIDTH / HEIGHT
+COLOR
+ALONG_OFFSET / NORMAL_OFFSET
+X_OFFSET / Y_OFFSET
+ROTATION_OFFSET_DEGREES
+
+The offsets fine-tune its placement without disconnecting it from maximum HP.
+The end cap renders over the HP path so it functions as a true terminal cap.
 
 RETAINED v1.4 DESIGN
 - Preserves Sora's native -a3290.dds face image.
@@ -76,23 +103,24 @@ HP CAPACITY AND FILL
 - HP reads the equipment-adjusted always-live Sora stat page in and out of
   combat, with the saved stat bytes retained only as a startup fallback.
 
-REVISED SETTINGS PRESERVED FROM THE ATTACHED v1.3 LUA
-- HP center: X=257, Y=99
-- HP scale: 1.00
+UPDATED SETTINGS PRESERVED FROM THE ATTACHED v1.6 LUA
+- HP center: X=256, Y=122
+- HP scale: 1.20
 - HP straight maximum length: 354
-- MP fixed right edge: X=207
-- MP Y position: 147
-- MP minimum/maximum lengths: 10 / 255
-- MP label: X=465, Y=338
-- LIMIT origin: X=72, Y=113, scale=0.54
-- LIMIT label: X=503, Y=429, font size 12
+- MP fixed right edge: X=223
+- MP Y position: 142
+- MP maximum range: 5 / 99
+- MP minimum/maximum lengths: 20 / 396
+- MP label: X=478, Y=333
+- LIMIT origin: X=136, Y=123, scale=0.30
+- LIMIT label: X=802, Y=679, font size 23
 - Empty LIMIT outline: black
 - Full-pulse outline peak: black
 - Full-pulse text peak: red
 
 EASY HP SETTINGS
 Open:
-scripts/ZZZ_KH1FM_Smooth_Circular_HP_Custom_MP_LIMIT_HUD_v1_6.lua
+scripts/ZZZ_KH1FM_Smooth_Circular_HP_Custom_MP_LIMIT_HUD_v1_7.lua
 
 Edit CONFIG.HP near the top:
 

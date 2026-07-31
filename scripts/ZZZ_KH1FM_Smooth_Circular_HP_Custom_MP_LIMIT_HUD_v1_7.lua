@@ -1,9 +1,9 @@
-LUAGUI_NAME = "KH1FM Smooth Circular HP + Custom MP + LIMIT HUD v1.6"
+LUAGUI_NAME = "KH1FM Smooth Circular HP + Custom MP + LIMIT HUD v1.7"
 LUAGUI_AUTH = "OpenAI"
-LUAGUI_DESC = "Stable-frame smooth circular HP gauge with HP text and three adjustable boxes, Max-MP-scaled custom bar, and exact pulsing five-slot LIMIT gauge."
+LUAGUI_DESC = "Stable-frame smooth circular HP gauge with HP text, four fixed adjustable boxes, and a rotating maximum-HP end cap; Max-MP-scaled custom bar; exact pulsing five-slot LIMIT gauge."
 
 --[[
-    KH1FM SMOOTH CIRCULAR HP + CUSTOM MP + LIMIT HUD v1.6
+    KH1FM SMOOTH CIRCULAR HP + CUSTOM MP + LIMIT HUD v1.7
     Target: KINGDOM HEARTS FINAL MIX.exe, Steam Global 1.0.0.2
     SHA-256: d790746245d26159f3ee0e1060e33b2fa2de06941850a4ac724f598722884bac
     Runtime: LuaBackendHook v1.9.1-hook / LuaEngine v5.0
@@ -53,9 +53,13 @@ LUAGUI_DESC = "Stable-frame smooth circular HP gauge with HP text and three adju
       * Copies the cached HP geometry into a fresh frame list before appending
         MP, LIMIT, and auxiliary boxes. Repeated MP or pulse updates therefore
         cannot enlarge or corrupt the cached HP rectangle list.
-      * Adds independently adjustable native-font HP text and three adjustable
-        black rectangles. Each rectangle begins at 12x12 and can be moved,
-        resized, recolored, or disabled without changing gauge mechanics.
+      * Retains the independently adjustable native-font HP text and the three
+        existing black rectangles without changing any of their settings.
+      * Adds a fourth fixed black rectangle at X=0, Y=0 and a fifth black
+        rectangle that follows the live maximum-HP endpoint. While maximum HP
+        is on the curve, that end cap rotates to the curve tangent; above 75
+        maximum HP it remains horizontal and follows the straight extension.
+        Both additions begin at 12x12 and are independently adjustable.
       * Reads current and maximum MP directly from Sora's live stat page every
         frame, using the same pointer resolution as MP Haste/Rage v6. This has
         no combat gate, so the custom MP bar updates during exploration too.
@@ -72,7 +76,7 @@ LUAGUI_DESC = "Stable-frame smooth circular HP gauge with HP text and three adju
         100       = slots 1-5 filled
 
     COMPATIBILITY
-      * Replaces this HUD's v1.5 and every earlier Curved HP HUD, Custom MP Bar
+      * Replaces this HUD's v1.6/v1.5 and every earlier Curved HP HUD, Custom MP Bar
         + LIMIT Gauge, or standalone LIMIT Gauge version; do not enable any of
         those older scripts at the same time.
       * Provides the two pass-through signatures required by Enemy HP HUD v4.1.
@@ -85,7 +89,7 @@ LUAGUI_DESC = "Stable-frame smooth circular HP gauge with HP text and three adju
       * Does not touch EnemyConfig, MP Haste/Rage, equipment bonuses, damage,
         animation, movement, BGM, or enemy data.
 
-    Disable v1.5, v1.4, Curved HP HUD v1.3, Custom MP Bar + LIMIT Gauge
+    Disable v1.6, v1.5, v1.4, Curved HP HUD v1.3, Custom MP Bar + LIMIT Gauge
     v1/v1.1/v1.2, LIMIT Gauge v2.2, and every older Numeric, Graphic, and
     Texture Sora HUD before using this file. Fully restart KH1FM; do not
     switch to it with F1.
@@ -149,9 +153,10 @@ local CONFIG = {
         PREVIEW_MAXIMUM = 255,
     },
 
-    -- Three independent black rectangles. Each begins at 12x12.
-    -- They render behind HP, MP, and LIMIT so they can also be repositioned
-    -- as backing pieces. X/Y/WIDTH/HEIGHT/COLOR/ENABLE are all adjustable.
+    -- Five independent black rectangles. The first three retain the user's
+    -- v1.6 values exactly. Box 4 is a new fixed 12x12 box at X=0, Y=0.
+    -- Box 5 is the maximum-HP end cap; it renders over the HP path and follows
+    -- both the endpoint and tangent rotation of Sora's live maximum HP.
     BOXES = {
         {
             ENABLE = true,
@@ -170,6 +175,30 @@ local CONFIG = {
             X = 212, Y = 122,
             WIDTH = 20, HEIGHT = 3,
             COLOR = 0x80000000,
+        },
+        {
+            ENABLE = true,
+            X = 0, Y = 0,
+            WIDTH = 12, HEIGHT = 12,
+            COLOR = 0x80000000,
+        },
+        {
+            ENABLE = true,
+            FOLLOW_HP_MAXIMUM = true,
+            WIDTH = 12, HEIGHT = 12,
+            COLOR = 0x80000000,
+
+            -- Fine adjustment in native 640x448 HUD pixels. ALONG_OFFSET
+            -- moves along the HP path direction; NORMAL_OFFSET moves across
+            -- the path. X/Y offsets are fixed screen-space corrections.
+            ALONG_OFFSET = 0,
+            NORMAL_OFFSET = 0,
+            X_OFFSET = 0,
+            Y_OFFSET = 0,
+
+            -- The box automatically follows the HP tangent. This value adds
+            -- an optional local correction without breaking that behavior.
+            ROTATION_OFFSET_DEGREES = 0,
         },
     },
 
@@ -321,7 +350,7 @@ local CONFIG = {
 -- VERIFIED BUILD CONSTANTS -- DO NOT EDIT
 -- =========================================================================
 
-local PREFIX = "[SmoothCircularHpMpLimitV1.6] "
+local PREFIX = "[SmoothCircularHpMpLimitV1.7] "
 
 local VERSION_SENTINEL_RVA = 0x3B2271
 local VERSION_VALUE = 0x7265737563697065
@@ -465,7 +494,9 @@ local MAX_RECTANGLES =
         / RECTANGLE_RECORD_SIZE)
 local EXACT_LIMIT_RECTANGLE_COUNT = 22
 local EXACT_MP_RECTANGLE_COUNT = 9
-local EXACT_BOX_RECTANGLE_COUNT = 3
+local FIXED_BOX_COUNT = 4
+local TOTAL_BOX_COUNT = 5
+local HP_END_CAP_BOX_INDEX = 5
 
 -- Assembled for module+0x3AF300. It contains:
 --   +0x000 player-HUD pass-through and one-time allocator call
@@ -846,6 +877,149 @@ local function hpRunsEqual(left, right)
         end
     end
     return true
+end
+
+-- Rasterizes one genuinely rotated solid rectangle into losslessly merged
+-- scanline records. KH1's native HUD wrapper only accepts axis-aligned
+-- rectangles, so this is the smallest stable representation of the rotating
+-- maximum-HP end cap. Cardinal rotations remain one native rectangle.
+local function addRotatedRectangle(
+    rectangles,
+    centerX,
+    centerY,
+    width,
+    height,
+    angleDegrees,
+    color
+)
+    local resolvedWidth = math.max(1, tonumber(width) or 1)
+    local resolvedHeight = math.max(1, tonumber(height) or 1)
+    local normalized = (tonumber(angleDegrees) or 0) % 360
+    local cardinal = round(normalized / 90) * 90
+    if math.abs(normalized - cardinal) < 0.000001 then
+        local effectiveWidth = resolvedWidth
+        local effectiveHeight = resolvedHeight
+        if cardinal % 180 ~= 0 then
+            effectiveWidth = resolvedHeight
+            effectiveHeight = resolvedWidth
+        end
+        addRectangle(
+            rectangles,
+            centerX - effectiveWidth / 2,
+            centerY - effectiveHeight / 2,
+            effectiveWidth,
+            effectiveHeight,
+            color
+        )
+        return
+    end
+
+    local radians = normalized * math.pi / 180
+    local cosine = math.cos(radians)
+    local sine = math.sin(radians)
+    local halfWidth = resolvedWidth / 2
+    local halfHeight = resolvedHeight / 2
+    local boundHalfWidth =
+        math.abs(halfWidth * cosine) + math.abs(halfHeight * sine)
+    local boundHalfHeight =
+        math.abs(halfWidth * sine) + math.abs(halfHeight * cosine)
+    local leftBound = math.floor(centerX - boundHalfWidth - 1)
+    local rightBound = math.ceil(centerX + boundHalfWidth + 1)
+    local topBound = math.floor(centerY - boundHalfHeight - 1)
+    local bottomBound = math.ceil(centerY + boundHalfHeight + 1)
+    local previousRuns = nil
+    local previousRectangleIndices = nil
+    local y
+    for y = topBound, bottomBound do
+        local runs = {}
+        local runStart = nil
+        local x
+        for x = leftBound, rightBound do
+            local deltaX = x + 0.5 - centerX
+            local deltaY = y + 0.5 - centerY
+            local localX = deltaX * cosine + deltaY * sine
+            local localY = -deltaX * sine + deltaY * cosine
+            local active =
+                math.abs(localX) <= halfWidth
+                and math.abs(localY) <= halfHeight
+            if active and runStart == nil then
+                runStart = x
+            elseif not active and runStart ~= nil then
+                runs[#runs + 1] = {
+                    x = runStart,
+                    width = x - runStart,
+                }
+                runStart = nil
+            end
+        end
+        if runStart ~= nil then
+            runs[#runs + 1] = {
+                x = runStart,
+                width = rightBound + 1 - runStart,
+            }
+        end
+
+        if #runs > 0 and hpRunsEqual(runs, previousRuns) then
+            local runIndex
+            for runIndex = 1, #runs do
+                local rectangle =
+                    rectangles[previousRectangleIndices[runIndex]]
+                rectangle.height = rectangle.height + 1
+            end
+        else
+            previousRuns = runs
+            previousRectangleIndices = {}
+            local runIndex
+            for runIndex = 1, #runs do
+                addRectangle(
+                    rectangles,
+                    runs[runIndex].x,
+                    y,
+                    runs[runIndex].width,
+                    1,
+                    color
+                )
+                previousRectangleIndices[runIndex] = #rectangles
+            end
+        end
+        if #runs == 0 then
+            previousRuns = nil
+            previousRectangleIndices = nil
+        end
+    end
+end
+
+-- Returns the centerline endpoint and forward tangent of the capacity path.
+-- This duplicates the exact maximum-HP interpolation used by addHpPathLayer,
+-- including the rounded straight length, so the end cap cannot drift away.
+local function hpMaximumEndpoint(maximumHp)
+    local hp = CONFIG.HP
+    local amount = clamp(
+        math.floor(tonumber(maximumHp) or 1),
+        1,
+        hp.MAXIMUM_HP
+    )
+    local radius = hp.CURVE_RADIUS * hp.SCALE
+    if amount <= hp.CURVE_HP then
+        local progressDegrees =
+            hp.CURVE_SWEEP_DEGREES * amount / hp.CURVE_HP
+        local pathDegrees = 180 + progressDegrees
+        local radians = pathDegrees * math.pi / 180
+        return hp.CENTER_X + radius * math.cos(radians),
+            hp.CENTER_Y + radius * math.sin(radians),
+            pathDegrees + 90
+    end
+
+    local straightAmount =
+        (amount - hp.CURVE_HP)
+        / (hp.MAXIMUM_HP - hp.CURVE_HP)
+    local straightLength = math.max(
+        1,
+        round(hp.STRAIGHT_MAX_LENGTH * hp.SCALE * straightAmount)
+    )
+    return hp.CENTER_X - straightLength,
+        hp.CENTER_Y + radius,
+        180
 end
 
 local function addHpPathLayer(
@@ -1426,10 +1600,10 @@ local function appendRectangles(destination, source)
     end
 end
 
-local function buildBoxRectangles()
+local function buildFixedBoxRectangles()
     local rectangles = {}
     local index
-    for index = 1, #CONFIG.BOXES do
+    for index = 1, FIXED_BOX_COUNT do
         local box = CONFIG.BOXES[index]
         if box.ENABLE then
             addRectangle(
@@ -1442,6 +1616,57 @@ local function buildBoxRectangles()
             )
         end
     end
+    return rectangles
+end
+
+local hpEndCapGeometryCache = {
+    maximum = nil,
+    rectangles = nil,
+}
+
+local function buildHpEndCapRectangles(maximumHp)
+    local maximum = clamp(
+        math.floor(tonumber(maximumHp) or 1),
+        1,
+        CONFIG.HP.MAXIMUM_HP
+    )
+    if hpEndCapGeometryCache.maximum == maximum
+        and hpEndCapGeometryCache.rectangles ~= nil
+    then
+        return hpEndCapGeometryCache.rectangles
+    end
+
+    local rectangles = {}
+    local box = CONFIG.BOXES[HP_END_CAP_BOX_INDEX]
+    if box.ENABLE then
+        local endpointX, endpointY, tangentDegrees =
+            hpMaximumEndpoint(maximum)
+        local tangentRadians = tangentDegrees * math.pi / 180
+        local tangentX = math.cos(tangentRadians)
+        local tangentY = math.sin(tangentRadians)
+        local normalX = -tangentY
+        local normalY = tangentX
+        local centerX = endpointX
+            + tangentX * box.ALONG_OFFSET
+            + normalX * box.NORMAL_OFFSET
+            + box.X_OFFSET
+        local centerY = endpointY
+            + tangentY * box.ALONG_OFFSET
+            + normalY * box.NORMAL_OFFSET
+            + box.Y_OFFSET
+        addRotatedRectangle(
+            rectangles,
+            centerX,
+            centerY,
+            box.WIDTH,
+            box.HEIGHT,
+            tangentDegrees + box.ROTATION_OFFSET_DEGREES,
+            box.COLOR
+        )
+    end
+
+    hpEndCapGeometryCache.maximum = maximum
+    hpEndCapGeometryCache.rectangles = rectangles
     return rectangles
 end
 
@@ -1458,13 +1683,17 @@ local function buildCombinedRectangles(
     -- refresh permanently appended more records until the 682-record guard
     -- stopped traversal. Every frame now starts with a separate destination.
     local rectangles = {}
-    local boxRectangles = buildBoxRectangles()
+    local fixedBoxRectangles = buildFixedBoxRectangles()
     local hpRectangles = buildHpRectangles(currentHp, maximumHp)
+    local hpEndCapRectangles = buildHpEndCapRectangles(maximumHp)
     local limitRectangles =
         buildLimitRectangles(blockCount, completeOutlineColor)
     local mpRectangles = buildMpRectangles(currentMp, maximumMp)
-    appendRectangles(rectangles, boxRectangles)
+    appendRectangles(rectangles, fixedBoxRectangles)
     appendRectangles(rectangles, hpRectangles)
+    -- The maximum-HP follower is a true end cap, so it is drawn over the HP
+    -- path after the fixed backing boxes and the capacity/fill layers.
+    appendRectangles(rectangles, hpEndCapRectangles)
     appendRectangles(rectangles, limitRectangles)
     appendRectangles(rectangles, mpRectangles)
     return rectangles
@@ -1823,28 +2052,45 @@ local function validateConfiguration()
     end
     local index
     if type(CONFIG.BOXES) ~= "table"
-        or #CONFIG.BOXES ~= EXACT_BOX_RECTANGLE_COUNT
+        or #CONFIG.BOXES ~= TOTAL_BOX_COUNT
     then
-        return false, "BOXES must contain exactly three adjustable boxes"
+        return false, "BOXES must contain exactly five adjustable boxes"
     end
     for index = 1, #CONFIG.BOXES do
         local box = CONFIG.BOXES[index]
         if type(box) ~= "table"
             or type(box.ENABLE) ~= "boolean"
-            or type(box.X) ~= "number"
-            or type(box.Y) ~= "number"
             or type(box.WIDTH) ~= "number"
             or type(box.HEIGHT) ~= "number"
             or box.WIDTH < 1
             or box.HEIGHT < 1
-            or box.WIDTH > 4096
-            or box.HEIGHT > 4096
             or type(box.COLOR) ~= "number"
             or box.COLOR < 0
             or box.COLOR > 4294967295
         then
             return false, "BOXES[" .. tostring(index)
                 .. "] settings are invalid"
+        end
+        if index <= FIXED_BOX_COUNT then
+            if type(box.X) ~= "number"
+                or type(box.Y) ~= "number"
+                or box.WIDTH > 4096
+                or box.HEIGHT > 4096
+            then
+                return false, "BOXES[" .. tostring(index)
+                    .. "] fixed-box settings are invalid"
+            end
+        elseif box.FOLLOW_HP_MAXIMUM ~= true
+            or box.WIDTH > 128
+            or box.HEIGHT > 128
+            or type(box.ALONG_OFFSET) ~= "number"
+            or type(box.NORMAL_OFFSET) ~= "number"
+            or type(box.X_OFFSET) ~= "number"
+            or type(box.Y_OFFSET) ~= "number"
+            or type(box.ROTATION_OFFSET_DEGREES) ~= "number"
+        then
+            return false, "BOXES[" .. tostring(index)
+                .. "] maximum-HP end-cap settings are invalid"
         end
     end
     for index = 1, 5 do
@@ -1935,9 +2181,25 @@ local function validateConfiguration()
         return false, "partial MP bar must generate "
             .. tostring(EXACT_MP_RECTANGLE_COUNT) .. " rectangles"
     end
-    local boxRectangles = buildBoxRectangles()
-    if #boxRectangles > EXACT_BOX_RECTANGLE_COUNT then
-        return false, "adjustable boxes generated too many rectangles"
+    local fixedBoxRectangles = buildFixedBoxRectangles()
+    if #fixedBoxRectangles > FIXED_BOX_COUNT then
+        return false, "fixed adjustable boxes generated too many rectangles"
+    end
+    local maximumEndCapRectangleCount = 0
+    local endCapTestMaximum
+    for endCapTestMaximum = 1, hp.CURVE_HP do
+        local endCapTestRectangles =
+            buildHpEndCapRectangles(endCapTestMaximum)
+        if #endCapTestRectangles > maximumEndCapRectangleCount then
+            maximumEndCapRectangleCount = #endCapTestRectangles
+        end
+    end
+    local endCapRectangles =
+        buildHpEndCapRectangles(hp.MAXIMUM_HP)
+    if CONFIG.BOXES[HP_END_CAP_BOX_INDEX].ENABLE
+        and maximumEndCapRectangleCount < 1
+    then
+        return false, "maximum-HP end cap did not generate geometry"
     end
     local hpRectangles =
         buildHpRectangles(hp.MAXIMUM_HP, hp.MAXIMUM_HP)
@@ -1962,18 +2224,25 @@ local function validateConfiguration()
         )
     if #hpRectangles ~= hpRectangleCount
         or #combined ~= hpRectangleCount
-            + #boxRectangles
+            + #fixedBoxRectangles
+            + #endCapRectangles
             + EXACT_LIMIT_RECTANGLE_COUNT
             + EXACT_MP_RECTANGLE_COUNT
         or #secondCombined ~= #combined
     then
         return false, "fresh-frame assembly did not preserve the HP-only cache"
     end
-    if #combined > MAX_RECTANGLES
+    local worstCaseRectangleCount = hpRectangleCount
+        + #fixedBoxRectangles
+        + maximumEndCapRectangleCount
+        + EXACT_LIMIT_RECTANGLE_COUNT
+        + EXACT_MP_RECTANGLE_COUNT
+    if worstCaseRectangleCount > MAX_RECTANGLES
         or RECTANGLE_RECORDS_OFFSET
-            + #combined * RECTANGLE_RECORD_SIZE > LABEL_RECORDS_OFFSET
+            + worstCaseRectangleCount * RECTANGLE_RECORD_SIZE
+                > LABEL_RECORDS_OFFSET
     then
-        return false, "combined geometry exceeds the aligned data buffer"
+        return false, "combined geometry plus rotated end cap exceeds the aligned data buffer"
     end
     if LABEL_RECORD_COUNT ~= 3
         or LABEL_RECORDS_OFFSET ~= 0x3FA0
@@ -2555,7 +2824,8 @@ function _OnFrame()
             .. ".." .. tostring(CONFIG.HP.MAXIMUM_HP)
             .. " scale=" .. tostring(CONFIG.HP.SCALE)
             .. " LABEL=\"" .. tostring(CONFIG.HP.LABEL.TEXT) .. "\".")
-        log("AUXILIARY BOXES: three independently adjustable 12x12 black boxes are enabled.")
+        log("AUXILIARY BOXES: four fixed adjustable boxes plus one rotating maximum-HP end cap are configured.")
+        log("HP END CAP: follows the live maximum-HP endpoint and tangent on the curve, then the straight extension.")
         log("MP LAYOUT: RIGHT_X=" .. tostring(CONFIG.MP.RIGHT_X)
             .. " Y=" .. tostring(CONFIG.MP.Y)
             .. " LENGTH="
