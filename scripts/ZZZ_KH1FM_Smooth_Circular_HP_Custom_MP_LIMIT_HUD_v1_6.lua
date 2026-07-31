@@ -236,7 +236,7 @@ local CONFIG = {
     ORIGIN = {
         X = 75,
         Y = 112,
-        SCALE = 0.54,
+        SCALE = 0.40,
     },
 
     -- Exact doubled-pixel bounds reconstructed from the supplied 0.50-scale
