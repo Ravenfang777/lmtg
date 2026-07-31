@@ -101,7 +101,7 @@ local CONFIG = {
 
     -- Custom HP path. Coordinates use KH1's native 640x448 HUD space.
     HP = {
-        CENTER_X = 254,
+        CENTER_X = 255,
         CENTER_Y = 125,
         SCALE = 1.20,
 
