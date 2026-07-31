@@ -77,7 +77,7 @@ local CONFIG = {
         -- RIGHT_X is the fixed exclusive right edge. Capacity growth extends
         -- left from this point, matching all four supplied references.
         RIGHT_X = 207,
-        Y = 149,
+        Y = 147,
         SCALE = 1.00,
 
         -- Capacity interpolation endpoints. Defaults match the references:
@@ -120,7 +120,7 @@ local CONFIG = {
             TEXT = "MP",
             -- Kept to the right of the fixed bar endpoint.
             X = 465,
-            Y = 340,
+            Y = 338,
             COLOR = 0x80E41853,
             FONT_SIZE = 8,
         },
@@ -134,7 +134,7 @@ local CONFIG = {
     -- Exact base placement from the three supplied 640x448 references.
     ORIGIN = {
         X = 72,
-        Y = 115,
+        Y = 113,
         SCALE = 0.54,
     },
 
