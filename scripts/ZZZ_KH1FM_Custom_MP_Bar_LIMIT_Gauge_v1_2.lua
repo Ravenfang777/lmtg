@@ -120,7 +120,7 @@ local CONFIG = {
             TEXT = "MP",
             -- Kept to the right of the fixed bar endpoint.
             X = 463,
-            Y = 338,
+            Y = 340,
             COLOR = 0x80E41853,
             FONT_SIZE = 8,
         },
@@ -175,8 +175,8 @@ local CONFIG = {
     LIMIT_LABEL = {
         ENABLE = true,
         TEXT = "LIMIT",
-        X = 530,
-        Y = 408,
+        X = 526,
+        Y = 448,
         COLOR = 0x800000FF,
         FONT_SIZE = 10,
     },
