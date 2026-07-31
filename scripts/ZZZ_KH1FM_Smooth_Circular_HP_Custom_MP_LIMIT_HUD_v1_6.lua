@@ -1,9 +1,9 @@
-LUAGUI_NAME = "KH1FM Smooth Circular HP + Custom MP + LIMIT HUD v1.5"
+LUAGUI_NAME = "KH1FM Smooth Circular HP + Custom MP + LIMIT HUD v1.6"
 LUAGUI_AUTH = "OpenAI"
-LUAGUI_DESC = "Flicker-safe smooth circular HP gauge, Max-MP-scaled custom bar, and exact pulsing five-slot LIMIT gauge."
+LUAGUI_DESC = "Stable-frame smooth circular HP gauge with HP text and three adjustable boxes, Max-MP-scaled custom bar, and exact pulsing five-slot LIMIT gauge."
 
 --[[
-    KH1FM SMOOTH CIRCULAR HP + CUSTOM MP + LIMIT HUD v1.5
+    KH1FM SMOOTH CIRCULAR HP + CUSTOM MP + LIMIT HUD v1.6
     Target: KINGDOM HEARTS FINAL MIX.exe, Steam Global 1.0.0.2
     SHA-256: d790746245d26159f3ee0e1060e33b2fa2de06941850a4ac724f598722884bac
     Runtime: LuaBackendHook v1.9.1-hook / LuaEngine v5.0
@@ -50,6 +50,12 @@ LUAGUI_DESC = "Flicker-safe smooth circular HP gauge, Max-MP-scaled custom bar, 
       * Publishes pulse-color refreshes without setting the shared rectangle
         count to zero. HP, MP, and LIMIT therefore remain continuously visible
         while the full-LIMIT outline and text change color.
+      * Copies the cached HP geometry into a fresh frame list before appending
+        MP, LIMIT, and auxiliary boxes. Repeated MP or pulse updates therefore
+        cannot enlarge or corrupt the cached HP rectangle list.
+      * Adds independently adjustable native-font HP text and three adjustable
+        black rectangles. Each rectangle begins at 12x12 and can be moved,
+        resized, recolored, or disabled without changing gauge mechanics.
       * Reads current and maximum MP directly from Sora's live stat page every
         frame, using the same pointer resolution as MP Haste/Rage v6. This has
         no combat gate, so the custom MP bar updates during exploration too.
@@ -66,19 +72,20 @@ LUAGUI_DESC = "Flicker-safe smooth circular HP gauge, Max-MP-scaled custom bar, 
         100       = slots 1-5 filled
 
     COMPATIBILITY
-      * Replaces this HUD's v1.4 and every earlier Curved HP HUD, Custom MP Bar
+      * Replaces this HUD's v1.5 and every earlier Curved HP HUD, Custom MP Bar
         + LIMIT Gauge, or standalone LIMIT Gauge version; do not enable any of
         those older scripts at the same time.
       * Provides the two pass-through signatures required by Enemy HP HUD v4.1.
-      * Owns module+0x3AF300..0x3AF700, module+0x3AFE00..0x3AFE40,
-        one 0x4000-byte aligned geometry allocation, the proven post-loop
-        hook, and HP/MP-only suppression sites.
+      * Owns module+0x3AF300..0x3AF700, one 0x4000-byte aligned geometry
+        allocation, the proven post-loop hook, and HP/MP-only suppression
+        sites. All three text records live at the reserved tail of that private
+        heap allocation rather than in another module data region.
       * Leaves Enemy HP HUD v4.1's module+0x3AF700..0x3AFE00 region untouched.
-      * Leaves LIMIT v1.6's module+0x3AFE40..0x3B0000 region untouched.
+      * Leaves module+0x3AFE00..0x3B0000 untouched, including LIMIT v1.6.
       * Does not touch EnemyConfig, MP Haste/Rage, equipment bonuses, damage,
         animation, movement, BGM, or enemy data.
 
-    Disable v1.4, Curved HP HUD v1.3, Custom MP Bar + LIMIT Gauge
+    Disable v1.5, v1.4, Curved HP HUD v1.3, Custom MP Bar + LIMIT Gauge
     v1/v1.1/v1.2, LIMIT Gauge v2.2, and every older Numeric, Graphic, and
     Texture Sora HUD before using this file. Fully restart KH1FM; do not
     switch to it with F1.
@@ -127,9 +134,43 @@ local CONFIG = {
         FILL_MIDDLE_COLOR = 0x801EB660, -- RGB 96,182,30
         FILL_INNER_COLOR = 0x8008D5AC,  -- RGB 172,213,8
 
+        -- Independent native-font label. Position/color/size are adjustable.
+        LABEL = {
+            ENABLE = true,
+            TEXT = "HP",
+            X = 620,
+            Y = 230,
+            COLOR = 0x8008D5AC,
+            FONT_SIZE = 8,
+        },
+
         -- Visual-only test. -1 uses live HP.
         PREVIEW_CURRENT = -1,
         PREVIEW_MAXIMUM = 255,
+    },
+
+    -- Three independent black rectangles. Each begins at 12x12.
+    -- They render behind HP, MP, and LIMIT so they can also be repositioned
+    -- as backing pieces. X/Y/WIDTH/HEIGHT/COLOR/ENABLE are all adjustable.
+    BOXES = {
+        {
+            ENABLE = true,
+            X = 0, Y = 0,
+            WIDTH = 12, HEIGHT = 12,
+            COLOR = 0x80000000,
+        },
+        {
+            ENABLE = true,
+            X = 14, Y = 0,
+            WIDTH = 12, HEIGHT = 12,
+            COLOR = 0x80000000,
+        },
+        {
+            ENABLE = true,
+            X = 28, Y = 0,
+            WIDTH = 12, HEIGHT = 12,
+            COLOR = 0x80000000,
+        },
     },
 
     -- Custom MP bar. Coordinates use KH1's native 640x448 HUD space.
@@ -280,7 +321,7 @@ local CONFIG = {
 -- VERIFIED BUILD CONSTANTS -- DO NOT EDIT
 -- =========================================================================
 
-local PREFIX = "[SmoothCircularHpMpLimitV1.5] "
+local PREFIX = "[SmoothCircularHpMpLimitV1.6] "
 
 local VERSION_SENTINEL_RVA = 0x3B2271
 local VERSION_VALUE = 0x7265737563697065
@@ -411,24 +452,26 @@ local DATA_POINTER_RVA = CAVE_RVA + 0x3F0
 local CAVE_SENTINEL_RVA = CAVE_RVA + 0x3F8
 local CAVE_SENTINEL = 0x4D504843
 local HEAP_DATA_SIZE = 0x4000
-local AUX_RVA = 0x3AFE00
-local AUX_SIZE = 0x40
 local DATA_SENTINEL = 0x31504D43
-local AUX_SENTINEL = 0x31585541
+local LABEL_SENTINEL = 0x31585541
 local RECTANGLE_RECORDS_OFFSET = 0x08
 local RECTANGLE_RECORD_SIZE = 0x18
+local LABEL_RECORD_SIZE = 0x20
+local LABEL_RECORD_COUNT = 3
+local LABEL_RECORDS_SIZE = LABEL_RECORD_SIZE * LABEL_RECORD_COUNT
+local LABEL_RECORDS_OFFSET = HEAP_DATA_SIZE - LABEL_RECORDS_SIZE
 local MAX_RECTANGLES =
-    math.floor((HEAP_DATA_SIZE - RECTANGLE_RECORDS_OFFSET)
+    math.floor((LABEL_RECORDS_OFFSET - RECTANGLE_RECORDS_OFFSET)
         / RECTANGLE_RECORD_SIZE)
 local EXACT_LIMIT_RECTANGLE_COUNT = 22
 local EXACT_MP_RECTANGLE_COUNT = 9
-local LABEL_RECORD_SIZE = 0x20
+local EXACT_BOX_RECTANGLE_COUNT = 3
 
 -- Assembled for module+0x3AF300. It contains:
 --   +0x000 player-HUD pass-through and one-time allocator call
 --   +0x048 Sora face-only base-sprite filter
 --   +0x080 minimal final-render pass-through
---   +0x088 post-loop HP/LIMIT/MP rectangle traversal and two-label loop
+--   +0x088 post-loop HP/LIMIT/MP rectangle traversal and three-label loop
 --   +0x180 verified aligned-allocator helper
 --   +0x3F0 heap pointer
 --   +0x3F8 cave sentinel
@@ -444,8 +487,8 @@ local CAVE_CODE = {
     0xE9, 0xEB, 0x00, 0xED, 0xFF, 0x00, 0x00, 0x00, 0x53, 0x56, 0x57, 0x48, 0x83, 0xEC, 0x38, 0xE8,
     0xEC, 0x00, 0x00, 0x00, 0x48, 0x85, 0xC0, 0x74, 0x57, 0x48, 0x89, 0xC7, 0x8B, 0x1F, 0x85, 0xDB,
     0x74, 0x1B, 0x48, 0x8D, 0x77, 0x08, 0x8B, 0x0E, 0x48, 0x8B, 0x56, 0x08, 0x4C, 0x8B, 0x46, 0x10,
-    0xE8, 0xDB, 0x72, 0xD9, 0xFF, 0x48, 0x83, 0xC6, 0x18, 0xFF, 0xCB, 0x75, 0xE9, 0xBB, 0x02, 0x00,
-    0x00, 0x00, 0x48, 0x8D, 0x35, 0x37, 0x0A, 0x00, 0x00, 0x83, 0x3E, 0x00, 0x74, 0x1A, 0x8B, 0x4E,
+    0xE8, 0xDB, 0x72, 0xD9, 0xFF, 0x48, 0x83, 0xC6, 0x18, 0xFF, 0xCB, 0x75, 0xE9, 0xBB, 0x03, 0x00,
+    0x00, 0x00, 0x48, 0x8D, 0xB7, 0xA0, 0x3F, 0x00, 0x00, 0x83, 0x3E, 0x00, 0x74, 0x1A, 0x8B, 0x4E,
     0x0C, 0x8B, 0x56, 0x04, 0x44, 0x8B, 0x46, 0x08, 0x4C, 0x8D, 0x4E, 0x14, 0x8B, 0x46, 0x10, 0x89,
     0x44, 0x24, 0x20, 0xE8, 0x08, 0x07, 0xF2, 0xFF, 0x48, 0x83, 0xC6, 0x20, 0xFF, 0xCB, 0x75, 0xD9,
     0x48, 0x83, 0xC4, 0x38, 0x5F, 0x5E, 0x5B, 0x0F, 0x28, 0xBC, 0x24, 0xA0, 0x00, 0x00, 0x00, 0xE9,
@@ -500,13 +543,9 @@ local CAVE_CODE = {
 }
 
 local ZERO_CODE = {}
-local ZERO_AUX = {}
 local zeroIndex
 for zeroIndex = 1, CODE_SIZE do
     ZERO_CODE[zeroIndex] = 0
-end
-for zeroIndex = 1, AUX_SIZE do
-    ZERO_AUX[zeroIndex] = 0
 end
 
 local runtime = {
@@ -1380,6 +1419,32 @@ local function buildMpRectangles(currentMp, maximumMp)
     return rectangles
 end
 
+local function appendRectangles(destination, source)
+    local index
+    for index = 1, #source do
+        destination[#destination + 1] = source[index]
+    end
+end
+
+local function buildBoxRectangles()
+    local rectangles = {}
+    local index
+    for index = 1, #CONFIG.BOXES do
+        local box = CONFIG.BOXES[index]
+        if box.ENABLE then
+            addRectangle(
+                rectangles,
+                box.X,
+                box.Y,
+                box.WIDTH,
+                box.HEIGHT,
+                box.COLOR
+            )
+        end
+    end
+    return rectangles
+end
+
 local function buildCombinedRectangles(
     blockCount,
     currentHp,
@@ -1388,17 +1453,20 @@ local function buildCombinedRectangles(
     maximumMp,
     completeOutlineColor
 )
-    local rectangles = buildHpRectangles(currentHp, maximumHp)
+    -- Never append to buildHpRectangles() directly. That table is the cached
+    -- HP-only image. V1.5 reused it as the frame list, so every MP/LIMIT
+    -- refresh permanently appended more records until the 682-record guard
+    -- stopped traversal. Every frame now starts with a separate destination.
+    local rectangles = {}
+    local boxRectangles = buildBoxRectangles()
+    local hpRectangles = buildHpRectangles(currentHp, maximumHp)
     local limitRectangles =
         buildLimitRectangles(blockCount, completeOutlineColor)
     local mpRectangles = buildMpRectangles(currentMp, maximumMp)
-    local index
-    for index = 1, #limitRectangles do
-        rectangles[#rectangles + 1] = limitRectangles[index]
-    end
-    for index = 1, #mpRectangles do
-        rectangles[#rectangles + 1] = mpRectangles[index]
-    end
+    appendRectangles(rectangles, boxRectangles)
+    appendRectangles(rectangles, hpRectangles)
+    appendRectangles(rectangles, limitRectangles)
+    appendRectangles(rectangles, mpRectangles)
     return rectangles
 end
 
@@ -1455,14 +1523,14 @@ local function labelBytes(
     return bytes
 end
 
-local function auxiliaryBytes(limitLabelColor)
+local function labelRecordsBytes(limitLabelColor)
     local output = {}
     local limitLabel = labelBytes(
         CONFIG.LIMIT_LABEL,
         CONFIG.ORIGIN.X,
         CONFIG.ORIGIN.Y,
         CONFIG.ORIGIN.SCALE,
-        AUX_SENTINEL,
+        LABEL_SENTINEL,
         limitLabelColor
     )
     local mpLabel = labelBytes(
@@ -1470,7 +1538,14 @@ local function auxiliaryBytes(limitLabelColor)
         0,
         0,
         1,
-        AUX_SENTINEL
+        LABEL_SENTINEL
+    )
+    local hpLabel = labelBytes(
+        CONFIG.HP.LABEL,
+        0,
+        0,
+        1,
+        LABEL_SENTINEL
     )
     local index
     for index = 1, #limitLabel do
@@ -1478,6 +1553,9 @@ local function auxiliaryBytes(limitLabelColor)
     end
     for index = 1, #mpLabel do
         output[#output + 1] = mpLabel[index]
+    end
+    for index = 1, #hpLabel do
+        output[#output + 1] = hpLabel[index]
     end
     return output
 end
@@ -1515,7 +1593,10 @@ local function publishRectangles(rectangles, limitLabelColor)
     -- are copied. The new count is committed last. The first publication is
     -- also safe because the allocator initializes the header to zero.
     ok, writeReason =
-        safeWriteArray(AUX_RVA, auxiliaryBytes(limitLabelColor))
+        safeWriteArrayAbsolute(
+            pointer + LABEL_RECORDS_OFFSET,
+            labelRecordsBytes(limitLabelColor)
+        )
     if not ok then
         return false, "could not publish labels: " .. tostring(writeReason)
     end
@@ -1637,6 +1718,11 @@ local function validateConfiguration()
     then
         return false, "HP preview values are invalid"
     end
+    local labelOk, labelReason =
+        validateLabel(hp.LABEL, "HP.LABEL")
+    if not labelOk then
+        return false, labelReason
+    end
 
     local mp = CONFIG.MP
     if type(mp) ~= "table"
@@ -1682,8 +1768,7 @@ local function validateConfiguration()
     then
         return false, "MP preview values are invalid"
     end
-    local labelOk, labelReason =
-        validateLabel(mp.LABEL, "MP.LABEL")
+    labelOk, labelReason = validateLabel(mp.LABEL, "MP.LABEL")
     if not labelOk then
         return false, labelReason
     end
@@ -1737,6 +1822,31 @@ local function validateConfiguration()
         return false, "LAYOUT settings are invalid"
     end
     local index
+    if type(CONFIG.BOXES) ~= "table"
+        or #CONFIG.BOXES ~= EXACT_BOX_RECTANGLE_COUNT
+    then
+        return false, "BOXES must contain exactly three adjustable boxes"
+    end
+    for index = 1, #CONFIG.BOXES do
+        local box = CONFIG.BOXES[index]
+        if type(box) ~= "table"
+            or type(box.ENABLE) ~= "boolean"
+            or type(box.X) ~= "number"
+            or type(box.Y) ~= "number"
+            or type(box.WIDTH) ~= "number"
+            or type(box.HEIGHT) ~= "number"
+            or box.WIDTH < 1
+            or box.HEIGHT < 1
+            or box.WIDTH > 4096
+            or box.HEIGHT > 4096
+            or type(box.COLOR) ~= "number"
+            or box.COLOR < 0
+            or box.COLOR > 4294967295
+        then
+            return false, "BOXES[" .. tostring(index)
+                .. "] settings are invalid"
+        end
+    end
     for index = 1, 5 do
         local block = CONFIG.LAYOUT.BLOCKS[index]
         local standardBlock = index < 5
@@ -1784,6 +1894,7 @@ local function validateConfiguration()
         hp.FILL_OUTER_COLOR,
         hp.FILL_MIDDLE_COLOR,
         hp.FILL_INNER_COLOR,
+        hp.LABEL.COLOR,
         CONFIG.COLORS.FILLED_EDGE,
         CONFIG.COLORS.FILLED_CENTER,
         CONFIG.COLORS.EMPTY_OUTLINE,
@@ -1824,6 +1935,13 @@ local function validateConfiguration()
         return false, "partial MP bar must generate "
             .. tostring(EXACT_MP_RECTANGLE_COUNT) .. " rectangles"
     end
+    local boxRectangles = buildBoxRectangles()
+    if #boxRectangles > EXACT_BOX_RECTANGLE_COUNT then
+        return false, "adjustable boxes generated too many rectangles"
+    end
+    local hpRectangles =
+        buildHpRectangles(hp.MAXIMUM_HP, hp.MAXIMUM_HP)
+    local hpRectangleCount = #hpRectangles
     local combined =
         buildCombinedRectangles(
             5,
@@ -1833,16 +1951,36 @@ local function validateConfiguration()
             2,
             pulse.OUTLINE_START_COLOR
         )
+    local secondCombined =
+        buildCombinedRectangles(
+            0,
+            hp.MAXIMUM_HP,
+            hp.MAXIMUM_HP,
+            2,
+            3,
+            nil
+        )
+    if #hpRectangles ~= hpRectangleCount
+        or #combined ~= hpRectangleCount
+            + #boxRectangles
+            + EXACT_LIMIT_RECTANGLE_COUNT
+            + EXACT_MP_RECTANGLE_COUNT
+        or #secondCombined ~= #combined
+    then
+        return false, "fresh-frame assembly did not preserve the HP-only cache"
+    end
     if #combined > MAX_RECTANGLES
         or RECTANGLE_RECORDS_OFFSET
-            + #combined * RECTANGLE_RECORD_SIZE > HEAP_DATA_SIZE
+            + #combined * RECTANGLE_RECORD_SIZE > LABEL_RECORDS_OFFSET
     then
         return false, "combined geometry exceeds the aligned data buffer"
     end
-    if LABEL_RECORD_SIZE * 2 ~= AUX_SIZE
-        or #auxiliaryBytes(pulse.TEXT_START_COLOR) ~= AUX_SIZE
+    if LABEL_RECORD_COUNT ~= 3
+        or LABEL_RECORDS_OFFSET ~= 0x3FA0
+        or #labelRecordsBytes(pulse.TEXT_START_COLOR)
+            ~= LABEL_RECORDS_SIZE
     then
-        return false, "two-label auxiliary image is invalid"
+        return false, "three-label heap image is invalid"
     end
     return true
 end
@@ -1959,16 +2097,10 @@ local function privateState()
     local code = safeReadArray(CAVE_RVA, CODE_SIZE)
     if codeImageMatches(code, CAVE_CODE) then
         local caveSentinel = safeReadInt(CAVE_SENTINEL_RVA)
-        local auxiliarySentinel = safeReadInt(AUX_RVA + 0x1C)
-        local auxiliary = safeReadArray(AUX_RVA, AUX_SIZE)
         local pointer = safeReadLong(DATA_POINTER_RVA) or 0
         local pointerOk = pointer == 0 or plausibleRuntimeAddress(pointer)
-        local auxiliaryOk =
-            auxiliarySentinel == AUX_SENTINEL
-            or isZeroArray(auxiliary)
         if caveSentinel == CAVE_SENTINEL
-            and pointerOk
-            and auxiliaryOk then
+            and pointerOk then
             if pointer ~= 0 then
                 local count = safeReadIntAbsolute(pointer)
                 local sentinel = safeReadIntAbsolute(pointer + 4)
@@ -1979,17 +2111,28 @@ local function privateState()
                     return nil,
                         "owned heap geometry header is invalid"
                 end
+                if count > 0 then
+                    local labelIndex
+                    for labelIndex = 0, LABEL_RECORD_COUNT - 1 do
+                        local labelSentinel = safeReadIntAbsolute(
+                            pointer
+                                + LABEL_RECORDS_OFFSET
+                                + labelIndex * LABEL_RECORD_SIZE
+                                + 0x1C
+                        )
+                        if labelSentinel ~= LABEL_SENTINEL then
+                            return nil,
+                                "owned heap label image is invalid"
+                        end
+                    end
+                end
             end
             return "owned"
         end
         return nil, "owned code exists, but its pointer/sentinel is invalid"
     end
     if isZeroArray(code) then
-        local auxiliary = safeReadArray(AUX_RVA, AUX_SIZE)
-        if isZeroArray(auxiliary) then
-            return "empty"
-        end
-        return nil, "private label region is already in use"
+        return "empty"
     end
     return nil, "private Sora HUD bridge region is already in use"
 end
@@ -2117,7 +2260,6 @@ local function install()
                     written[restoreIndex].original
                 )
             end
-            safeWriteArray(AUX_RVA, ZERO_AUX)
             safeWriteArray(CAVE_RVA, ZERO_CODE)
             return false, "could not install " .. patch.name
                 .. ": " .. tostring(reason)
@@ -2411,7 +2553,9 @@ function _OnFrame()
             .. " curve=1.." .. tostring(CONFIG.HP.CURVE_HP)
             .. " straight=" .. tostring(CONFIG.HP.CURVE_HP + 1)
             .. ".." .. tostring(CONFIG.HP.MAXIMUM_HP)
-            .. " scale=" .. tostring(CONFIG.HP.SCALE) .. ".")
+            .. " scale=" .. tostring(CONFIG.HP.SCALE)
+            .. " LABEL=\"" .. tostring(CONFIG.HP.LABEL.TEXT) .. "\".")
+        log("AUXILIARY BOXES: three independently adjustable 12x12 black boxes are enabled.")
         log("MP LAYOUT: RIGHT_X=" .. tostring(CONFIG.MP.RIGHT_X)
             .. " Y=" .. tostring(CONFIG.MP.Y)
             .. " LENGTH="
@@ -2432,7 +2576,9 @@ function _OnFrame()
         log("FULL LIMIT: outline and LIMIT text pulse together every "
             .. tostring(CONFIG.FULL_PULSE.CYCLE_SECONDS)
             .. " seconds; speed and colors are adjustable; mechanics are unchanged.")
-        log("FLICKER-SAFE PUBLISHER: HP, MP, and LIMIT remain active during pulse-color refreshes.")
+        log("STABLE FRAME ASSEMBLY: cached HP geometry remains HP-only; "
+            .. "frame capacity=" .. tostring(MAX_RECTANGLES)
+            .. " rectangles and labels use separate heap records.")
     end
 
     local updateOk, updateReason = updateGauge()

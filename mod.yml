@@ -1,18 +1,18 @@
-title: KH1FM Smooth Circular HP + Custom MP + Pulsing LIMIT HUD (v1.5)
+title: KH1FM Smooth Circular HP + Custom MP + Pulsing LIMIT HUD (v1.6)
 originalAuthor: Raven Fang
 description: >-
   Preserves Sora's face while removing the complete native HP and MP gauges.
   Replaces the square-stamped v1.3 HP curve with a true equal-radius circular
   arc rasterized into smooth native scanlines, then extends the path left above
-  75 maximum HP. Uses flicker-safe record publication so HP, MP, and LIMIT stay
-  visible throughout the full-LIMIT color pulse. Retains the user's revised HP,
-  MP, LIMIT, label, color, pulse, scale, and position settings. No DDS or MDLS
-  replacement.
+  75 maximum HP. Uses fresh-frame assembly so cached HP geometry cannot grow
+  when MP changes or LIMIT pulses. Adds adjustable HP text and three independent
+  12x12 black boxes while retaining the user's HP, MP, LIMIT, color, pulse,
+  scale, and position settings. No DDS or MDLS replacement.
 logo: icon.png
 game: kh1
 assets:
-  - name: scripts/ZZZ_KH1FM_Smooth_Circular_HP_Custom_MP_LIMIT_HUD_v1_5.lua
+  - name: scripts/ZZZ_KH1FM_Smooth_Circular_HP_Custom_MP_LIMIT_HUD_v1_6.lua
     platform: pc
     method: copy
     source:
-      - name: scripts/ZZZ_KH1FM_Smooth_Circular_HP_Custom_MP_LIMIT_HUD_v1_5.lua
+      - name: scripts/ZZZ_KH1FM_Smooth_Circular_HP_Custom_MP_LIMIT_HUD_v1_6.lua

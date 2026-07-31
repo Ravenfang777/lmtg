@@ -1,7 +1,7 @@
-KH1FM SMOOTH CIRCULAR HP + CUSTOM MP + PULSING LIMIT HUD v1.5
+KH1FM SMOOTH CIRCULAR HP + CUSTOM MP + PULSING LIMIT HUD v1.6
 
 INSTALLATION
-1. Disable Smooth Circular HP + Custom MP + Pulsing LIMIT HUD v1.4.
+1. Disable Smooth Circular HP + Custom MP + Pulsing LIMIT HUD v1.5 and v1.4.
 2. Disable Curved HP HUD v1.3.
 3. Disable Custom MP Bar + LIMIT Gauge v1/v1.1/v1.2.
 4. Disable standalone LIMIT Gauge v2.2.
@@ -12,14 +12,44 @@ INSTALLATION
    with F1.
 
 EXPECTED CONSOLE PREFIX
-[SmoothCircularHpMpLimitV1.5]
+[SmoothCircularHpMpLimitV1.6]
 
-WHAT v1.5 FIXES
+WHAT v1.6 FIXES
+- Every render refresh now starts with a fresh frame list.
+- The cached HP table remains HP-only; MP changes and LIMIT pulse updates can
+  no longer append themselves repeatedly until the rectangle guard stops.
+- A 2,000-refresh stress test remains fixed at 490 rectangles with the default
+  maximum HP/MP settings, below the private 678-rectangle capacity.
+- HP, MP, LIMIT, and the three black boxes use Sora's private heap allocation.
+- Enemy HP HUD v4.1 keeps its separate module region and render records.
 - Full-LIMIT pulse refreshes no longer set the shared rectangle count to zero.
 - HP, MP, and LIMIT remain continuously visible while the outline and LIMIT
   text change color.
 - The renderer commits each refreshed record set before publishing its count.
-- Every v1.4 visual setting and gameplay behavior is preserved.
+- Every v1.5 visual setting and gameplay behavior is preserved.
+
+NEW HP TEXT
+Edit CONFIG.HP.LABEL:
+
+ENABLE
+TEXT
+X / Y
+COLOR
+FONT_SIZE
+
+The default text is "HP". HP, MP, and LIMIT each use one native font record.
+These text records do not count against the rectangle capacity.
+
+THREE ADJUSTABLE BLACK BOXES
+Edit CONFIG.BOXES. Each of the three entries starts with:
+
+WIDTH = 12
+HEIGHT = 12
+COLOR = 0x80000000
+
+Each box has its own ENABLE, X, Y, WIDTH, HEIGHT, and COLOR setting. The boxes
+render first, allowing them to be used as independent shapes or as backing
+pieces beneath the gauges.
 
 RETAINED v1.4 DESIGN
 - Preserves Sora's native -a3290.dds face image.
@@ -62,7 +92,7 @@ REVISED SETTINGS PRESERVED FROM THE ATTACHED v1.3 LUA
 
 EASY HP SETTINGS
 Open:
-scripts/ZZZ_KH1FM_Smooth_Circular_HP_Custom_MP_LIMIT_HUD_v1_5.lua
+scripts/ZZZ_KH1FM_Smooth_Circular_HP_Custom_MP_LIMIT_HUD_v1_6.lua
 
 Edit CONFIG.HP near the top:
 
@@ -99,8 +129,10 @@ MP AND LIMIT
 
 COMPATIBILITY
 - The renderer keeps Enemy HP HUD v4.1's module+0x3AF700..0x3AFE00 region free.
-- It keeps LIMIT System v1.6's module+0x3AFE40..0x3B0000 region free.
+- It keeps module+0x3AFE00..0x3B0000 free, including LIMIT System v1.6.
 - One 0x4000-byte aligned geometry buffer is allocated once after the player
   HUD loads; there is no per-frame allocation.
+- Three label records are stored at the reserved tail of that same allocation.
+- Text does not count as geometry rectangles.
 - Pulse updates keep the previous valid rectangle list active until the new
   list has been copied, preventing whole-HUD disappearance between writes.
