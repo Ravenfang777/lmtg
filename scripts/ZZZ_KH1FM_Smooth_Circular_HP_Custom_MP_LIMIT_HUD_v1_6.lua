@@ -155,19 +155,19 @@ local CONFIG = {
     BOXES = {
         {
             ENABLE = true,
-            X = 0, Y = 130,
+            X = 40, Y = 130,
             WIDTH = 22, HEIGHT = 10,
             COLOR = 0x80000000,
         },
         {
             ENABLE = true,
-            X = 14, Y = 140,
+            X = 54, Y = 140,
             WIDTH = 30, HEIGHT = 8,
             COLOR = 0x80000000,
         },
         {
             ENABLE = true,
-            X = 28, Y = 120,
+            X = 68, Y = 120,
             WIDTH = 12, HEIGHT = 10,
             COLOR = 0x80000000,
         },
