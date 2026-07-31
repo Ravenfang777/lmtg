@@ -178,7 +178,7 @@ local CONFIG = {
         X = 503,
         Y = 429,
         COLOR = 0x800000FF,
-        FONT_SIZE = 14,
+        FONT_SIZE = 12,
     },
 
     COLORS = {
