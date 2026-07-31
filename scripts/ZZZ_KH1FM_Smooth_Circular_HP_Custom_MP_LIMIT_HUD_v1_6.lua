@@ -185,9 +185,9 @@ local CONFIG = {
         -- Max MP 10  -> outer width 10
         -- Max MP 200 -> outer width 200
         MINIMUM_MAX_MP = 10,
-        MAXIMUM_MAX_MP = 250,
-        MINIMUM_LENGTH = 10,
-        MAXIMUM_LENGTH = 250,
+        MAXIMUM_MAX_MP = 200,
+        MINIMUM_LENGTH = 20,
+        MAXIMUM_LENGTH = 400,
 
         HEIGHT = 7,
         BORDER = 1,
@@ -221,7 +221,7 @@ local CONFIG = {
             TEXT = "MP",
             -- Revised independent label placement.
             X = 465,
-            Y = 338,
+            Y = 335,
             COLOR = 0x80E41853,
             FONT_SIZE = 8,
         },
