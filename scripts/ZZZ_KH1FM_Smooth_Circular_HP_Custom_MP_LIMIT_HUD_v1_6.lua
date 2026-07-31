@@ -102,8 +102,8 @@ local CONFIG = {
     -- Custom HP path. Coordinates use KH1's native 640x448 HUD space.
     HP = {
         CENTER_X = 257,
-        CENTER_Y = 129,
-        SCALE = 1.00,
+        CENTER_Y = 125,
+        SCALE = 1.10,
 
         -- The supplied references establish this capacity model exactly:
         -- 25 HP = 90 degrees, 50 HP = 180 degrees, 75 HP = 270 degrees.
