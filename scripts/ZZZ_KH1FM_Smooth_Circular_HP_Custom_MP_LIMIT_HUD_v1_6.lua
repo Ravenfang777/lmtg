@@ -221,7 +221,7 @@ local CONFIG = {
             TEXT = "MP",
             -- Revised independent label placement.
             X = 465,
-            Y = 335,
+            Y = 337,
             COLOR = 0x80E41853,
             FONT_SIZE = 8,
         },
@@ -234,7 +234,7 @@ local CONFIG = {
 
     -- Revised LIMIT placement supplied for this variant.
     ORIGIN = {
-        X = 72,
+        X = 75,
         Y = 114,
         SCALE = 0.54,
     },
