@@ -1,16 +1,18 @@
-title: KH1FM Exact Five-Slot LIMIT Gauge (v2.2)
+title: KH1FM Custom MP Bar + Exact Pulsing LIMIT Gauge (v1.1)
 originalAuthor: Raven Fang
 description: >-
-  Reproduces the supplied empty and full five-slot LIMIT gauge references
-  exactly at the default settings. Slots use the exact sampled gray, black,
-  red, dark-red, and cyan-teal colors and fill at 20, 40, 60, 80, and 100
-  LIMIT. Position and scale remain adjustable in Lua. Native portrait, HP, MP,
-  labels, textures, and MDLS files remain untouched.
+  Completely removes Sora's native MP gauge, charge strip, capacity packets,
+  MP layer, and MP label. Adds a continuously proportional, always-live custom
+  MP bar with editable position, scale, length, height, colors, fill direction,
+  and label text. Reconstructs the supplied 0/80/100 five-slot LIMIT references
+  exactly; at 100 the teal outline slowly pulses to white and back. LIMIT
+  mechanics, native portrait, and native HP remain unchanged. No DDS or MDLS
+  replacement is used.
 logo: icon.png
 game: kh1
 assets:
-  - name: scripts/ZZZ_KH1FM_LIMIT_Gauge_v2_2_ExactReference.lua
+  - name: scripts/ZZZ_KH1FM_Custom_MP_Bar_LIMIT_Gauge_v1_1.lua
     platform: pc
     method: copy
     source:
-      - name: scripts/ZZZ_KH1FM_LIMIT_Gauge_v2_2_ExactReference.lua
+      - name: scripts/ZZZ_KH1FM_Custom_MP_Bar_LIMIT_Gauge_v1_1.lua

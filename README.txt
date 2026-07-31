@@ -1,94 +1,77 @@
-KH1FM EXACT FIVE-SLOT LIMIT GAUGE v2.2
-Exact-reference native-geometry OpenKH edition
+KH1FM CUSTOM MP BAR + EXACT LIMIT GAUGE v1.1
 
-TARGET
-  Kingdom Hearts Final Mix, Steam Global 1.0.0.2
-  LuaBackendHook v1.9.1-hook / LuaEngine v5.0
-  LIMIT System v1.6
+INSTALLATION
+1. Disable Custom MP Bar + Exact LIMIT Gauge v1.
+2. Disable KH1FM Exact Five-Slot LIMIT Gauge v2.2.
+3. Disable every older Numeric, Graphic, Texture Sora HUD, and Resource Probe.
+4. Keep LIMIT System v1.6 enabled.
+5. Install this ZIP through OpenKH Mod Manager.
+6. Completely close KH1FM, then use Build and Run. Do not switch HUD scripts
+   with F1.
 
-WHAT CHANGED FROM v2.1
-  - Treats the two newly supplied PNGs as the exact visual specification.
-  - Removes the four-band gradient approximation.
-  - Uses exact sampled solid colors:
-      filled outline  RGB 0,238,255
-      filled edge     RGB 181,0,0
-      filled center   RGB 226,20,42
-      empty outline   RGB 74,74,74
-      empty edge      RGB 39,39,39
-      empty center    RGB 85,85,85
-      slot gaps       RGB 0,0,0
-  - Uses the exact rectangular widths, heights, gaps, common baseline, and
-    two-pixel lower-right inset shown in the fifth slot.
-  - Preserves the supplied red LIMIT label position and default 0.50 scale.
+EXPECTED CONSOLE PREFIX
+[CustomMpLimitV1.1]
 
-LIMIT BEHAVIOR
-    0-19 LIMIT = all five redesigned empty slots
-   20-39 LIMIT = slot 1 filled
-   40-59 LIMIT = slots 1-2 filled
-   60-79 LIMIT = slots 1-3 filled
-   80-99 LIMIT = slots 1-4 filled
-     100 LIMIT = slots 1-5 filled
+EASY MP SETTINGS
+Open:
+scripts/ZZZ_KH1FM_Custom_MP_Bar_LIMIT_Gauge_v1_1.lua
 
-SIZE AND POSITION
-  Open:
-    scripts/ZZZ_KH1FM_LIMIT_Gauge_v2_2_ExactReference.lua
+Edit only CONFIG.MP near the top:
 
-  Edit only:
-    ORIGIN = {
-        X = 0,
-        Y = 0,
-        SCALE = 0.50,
-    }
+X / Y
+    Position in KH1's native 640x448 HUD space.
 
-  X moves the complete layout horizontally.
-  Y moves the complete layout vertically.
-  SCALE resizes the label and all five slots together.
+SCALE
+    Master size multiplier for the bar and MP label.
 
-  Suggested SCALE values:
-    0.40 = smaller
-    0.50 = exact supplied-reference size
-    0.60 = slightly larger
-    1.00 = redesigned source size
+LENGTH / HEIGHT / BORDER
+    Bar dimensions. Defaults reproduce the reference's 94x7 outer shape.
 
-  At X=0, Y=0, SCALE=0.50:
-    complete visible footprint = X 15..126, Y 2..31
-    five-slot footprint        = X 31..126, Y 2..31
+FILL_DIRECTION
+    "LEFT_TO_RIGHT" or "RIGHT_TO_LEFT".
 
-REFERENCE AND PREVIEW IMAGES
-  Reference_Exact_LIMIT_0.png and Reference_Exact_LIMIT_100.png are the two
-  supplied authoritative images.
+FILL_COLOR / EMPTY_COLOR / BORDER_COLOR
+    AABBGGRR native HUD colors. The lower shading bands are generated from the
+    selected top-row colors.
 
-  Preview_LIMIT_0_DefaultScale_0_50.png and
-  Preview_LIMIT_100_DefaultScale_0_50.png are generated from the exact
-  geometry and colors encoded in the Lua. Their decoded RGBA pixels match the
-  authoritative references exactly.
+LABEL.TEXT
+    Custom label text, up to seven ASCII characters.
 
-  The runtime renderer uses native HUD geometry, not PNG or DDS sampling.
+LABEL.X / LABEL.Y / LABEL.COLOR / LABEL.FONT_SIZE
+    Independent MP label controls.
 
-INSTALL
-  1. Disable/remove LIMIT Gauge v2.1 and every earlier LIMIT gauge.
-  2. Disable every older Numeric, Graphic, Texture, and Resource Probe Sora
-     HUD controller.
-  3. Keep ZZZ_KH1FM_LIMIT_System_v1_6_EnemyBoundsOrder.lua enabled.
-  4. Enemy HP HUD v4.1 may remain enabled.
-  5. Add this ZIP as a Kingdom Hearts 1 mod in OpenKH Mod Manager.
-  6. Enable it, then use Build and Run.
-  7. Completely close and restart KH1FM. Do not switch from v2.1 with F1.
+PREVIEW_CURRENT / PREVIEW_MAXIMUM
+    Set PREVIEW_CURRENT to 0..PREVIEW_MAXIMUM for a visual test. Return it to
+    -1 for live MP.
 
-EXPECTED CONSOLE
-  [LimitGaugeV2.2] READY: exact-reference five-slot LIMIT gauge; new installation.
-  [LimitGaugeV2.2] LAYOUT: base origin X=0 Y=0 SCALE=0.5.
-  [LimitGaugeV2.2] THRESHOLDS: 20, 40, 60, 80, and 100 LIMIT.
+BEHAVIOR
+- The purple fill is continuous and proportional to current MP / maximum MP.
+- Current and maximum MP are read directly from Sora's always-live stat page
+  every frame. This uses the same compressed-pointer resolution as MP
+  Haste/Rage v6 and has no combat gate, so the bar updates during exploration.
+- The native-HUD capture and saved-stat bytes remain only as safe fallbacks.
+- Native MP outline, fill, MP Charge strip, capacity-extension packets, base
+  MP layer, and native MP label are removed.
+- Sora's native portrait and main HP gauge remain.
+- The LIMIT gauge exactly follows Reference_Exact_LIMIT_0.png,
+  Reference_Exact_LIMIT_80.png, and Reference_Exact_LIMIT_100.png.
+- Slots fill at 20/40/60/80/100. At 20..80, filled slots remain inside the
+  normal gray/black backs. At 100, all five red slots receive the teal outline.
+- At 100 only, the outline slowly pulses teal -> white -> teal. This is visual
+  only and never changes LIMIT gain, spending, thresholds, or maximum.
+- No DDS or MDLS replacement is used.
 
-VISUAL TEST
-  Temporarily change:
-    PREVIEW_LIMIT = -1
-  to:
-    PREVIEW_LIMIT = 100
+FULL-LIMIT PULSE SETTINGS
+Edit CONFIG.FULL_PULSE near the top of the Lua:
 
-  This displays all five red/teal slots without changing gameplay LIMIT.
-  Return PREVIEW_LIMIT to -1 after positioning the gauge.
+ENABLE
+    true enables the full-state flash; false keeps the outline solid teal.
 
-ROLLBACK
-  Disable/remove this mod, use Build and Run again, and fully restart KH1FM.
-  No remastered asset needs restoration.
+CYCLE_SECONDS
+    Seconds for one complete teal -> white -> teal cycle. Default: 3.00.
+
+COLOR_STEPS
+    Number of color steps from teal to white. Default: 30.
+
+TEAL_COLOR / WHITE_COLOR
+    Editable AABBGGRR endpoint colors.
