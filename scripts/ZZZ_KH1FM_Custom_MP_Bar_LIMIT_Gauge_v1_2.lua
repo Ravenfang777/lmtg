@@ -134,7 +134,7 @@ local CONFIG = {
     -- Exact base placement from the three supplied 640x448 references.
     ORIGIN = {
         X = 82,
-        Y = 119,
+        Y = 121,
         SCALE = 0.50,
     },
 
@@ -175,8 +175,8 @@ local CONFIG = {
     LIMIT_LABEL = {
         ENABLE = true,
         TEXT = "LIMIT",
-        X = 440,
-        Y = 308,
+        X = 530,
+        Y = 408,
         COLOR = 0x800000FF,
         FONT_SIZE = 10,
     },
