@@ -1,9 +1,9 @@
-LUAGUI_NAME = "KH1FM Curved HP + Custom MP + LIMIT HUD v1.3"
+LUAGUI_NAME = "KH1FM Smooth Circular HP + Custom MP + LIMIT HUD v1.4"
 LUAGUI_AUTH = "OpenAI"
-LUAGUI_DESC = "Continuous curved HP gauge, Max-MP-scaled custom bar, and exact pulsing five-slot LIMIT gauge."
+LUAGUI_DESC = "Smooth circular HP gauge, Max-MP-scaled custom bar, and exact pulsing five-slot LIMIT gauge."
 
 --[[
-    KH1FM CURVED HP + CUSTOM MP + LIMIT HUD v1.3
+    KH1FM SMOOTH CIRCULAR HP + CUSTOM MP + LIMIT HUD v1.4
     Target: KINGDOM HEARTS FINAL MIX.exe, Steam Global 1.0.0.2
     SHA-256: d790746245d26159f3ee0e1060e33b2fa2de06941850a4ac724f598722884bac
     Runtime: LuaBackendHook v1.9.1-hook / LuaEngine v5.0
@@ -12,20 +12,24 @@ LUAGUI_DESC = "Continuous curved HP gauge, Max-MP-scaled custom bar, and exact p
       * Removes Sora's complete native HP gauge, HP capacity/outline, HP fill,
         native circular backing, and native HP label while preserving the
         -a3290.dds Sora face image.
-      * Draws a black-outlined gray/green HP path matching the supplied 25,
-        37, 50, 75, and 255 maximum-HP references.
+      * Draws a black-outlined gray/green HP path using a true circular arc
+        instead of the slightly elliptical, square-stamped v1.3 curve.
       * 1..75 maximum HP grows continuously around a 270-degree curve.
         76..255 maximum HP extends continuously left from the curve's lower
         endpoint. Current HP fills that exact same path point-for-point.
       * The curve advances once per integer HP point and the straight section
-        interpolates to the exact 255-HP reference length.
+        interpolates to the configured 255-HP length.
+      * Every arc layer is rasterized into exact one-pixel scanlines and then
+        losslessly merged into rectangles. This removes the bulbous diagonal
+        edges caused by v1.3's large overlapping square stamps.
       * Removes Sora's native MP gauge, MP Charge strip, MP capacity packets,
         and native MP label.
-      * Draws a separate proportional MP bar based on the supplied 10-MP and
-        255-MP empty/full references.
-      * The bar's right edge stays fixed. Capacity is exactly 7x7 at 10 maximum
-        MP and exactly 179x7 at 255 maximum MP, with every intermediate maximum
-        interpolated continuously. Capacity growth therefore extends left.
+      * Draws a separate proportional MP bar with the user's revised position,
+        length range, label placement, colors, and depletion direction.
+      * The bar's right edge stays fixed. Capacity uses the configured length
+        at 10 maximum MP and the configured length at 255 maximum MP, with
+        every intermediate maximum interpolated continuously. Capacity growth
+        therefore extends left.
       * Current MP fills only the capacity that exists for Sora's live maximum.
         EMPTY_DIRECTION can make spent MP empty from left to right or from
         right to left.
@@ -59,8 +63,9 @@ LUAGUI_DESC = "Continuous curved HP gauge, Max-MP-scaled custom bar, and exact p
         100       = slots 1-5 filled
 
     COMPATIBILITY
-      * Replaces Custom MP Bar + LIMIT Gauge v1/v1.1/v1.2 and LIMIT Gauge
-        v2.2; do not enable any of those older scripts at the same time.
+      * Replaces Curved HP HUD v1.3, Custom MP Bar + LIMIT Gauge
+        v1/v1.1/v1.2, and LIMIT Gauge v2.2; do not enable any of those older
+        scripts at the same time.
       * Provides the two pass-through signatures required by Enemy HP HUD v4.1.
       * Owns module+0x3AF300..0x3AF700, module+0x3AFE00..0x3AFE40,
         one 0x4000-byte aligned geometry allocation, the proven post-loop
@@ -70,9 +75,9 @@ LUAGUI_DESC = "Continuous curved HP gauge, Max-MP-scaled custom bar, and exact p
       * Does not touch EnemyConfig, MP Haste/Rage, equipment bonuses, damage,
         animation, movement, BGM, or enemy data.
 
-    Disable Custom MP Bar + LIMIT Gauge v1/v1.1/v1.2, LIMIT Gauge v2.2, and
-    every older Numeric, Graphic, and Texture Sora HUD before using this file.
-    Fully restart KH1FM; do not switch to it with F1.
+    Disable Curved HP HUD v1.3, Custom MP Bar + LIMIT Gauge v1/v1.1/v1.2,
+    LIMIT Gauge v2.2, and every older Numeric, Graphic, and Texture Sora HUD
+    before using this file. Fully restart KH1FM; do not switch to it with F1.
 ]]
 
 -- =========================================================================
@@ -93,8 +98,9 @@ local CONFIG = {
         -- 25 HP = 90 degrees, 50 HP = 180 degrees, 75 HP = 270 degrees.
         CURVE_HP = 75,
         CURVE_SWEEP_DEGREES = 270,
-        CURVE_RADIUS_X = 30.50,
-        CURVE_RADIUS_Y = 29.00,
+        -- A single radius guarantees a true circle. Increase or decrease this
+        -- one value to resize the circular path without making it elliptical.
+        CURVE_RADIUS = 30.00,
 
         -- At 255 HP the lower endpoint reaches X=3 in the supplied reference.
         MAXIMUM_HP = 255,
@@ -130,9 +136,9 @@ local CONFIG = {
         Y = 147,
         SCALE = 1.00,
 
-        -- Capacity interpolation endpoints. Defaults match the references:
-        -- Max MP 10  -> outer width 7  (X=203..209)
-        -- Max MP 255 -> outer width 179 (X=31..209)
+        -- Revised capacity interpolation endpoints supplied for this variant.
+        -- Max MP 10  -> outer width 10
+        -- Max MP 255 -> outer width 255
         MINIMUM_MAX_MP = 10,
         MAXIMUM_MAX_MP = 255,
         MINIMUM_LENGTH = 10,
@@ -168,7 +174,7 @@ local CONFIG = {
         LABEL = {
             ENABLE = true,
             TEXT = "MP",
-            -- Kept to the right of the fixed bar endpoint.
+            -- Revised independent label placement.
             X = 465,
             Y = 338,
             COLOR = 0x80E41853,
@@ -181,7 +187,7 @@ local CONFIG = {
         PREVIEW_MAXIMUM = 255,
     },
 
-    -- Exact base placement from the three supplied 640x448 references.
+    -- Revised LIMIT placement supplied for this variant.
     ORIGIN = {
         X = 72,
         Y = 113,
@@ -270,7 +276,7 @@ local CONFIG = {
 -- VERIFIED BUILD CONSTANTS -- DO NOT EDIT
 -- =========================================================================
 
-local PREFIX = "[CurvedHpMpLimitV1.3] "
+local PREFIX = "[SmoothCircularHpMpLimitV1.4] "
 
 local VERSION_SENTINEL_RVA = 0x3B2271
 local VERSION_VALUE = 0x7265737563697065
@@ -754,6 +760,51 @@ local function addRectangleEdges(rectangles, left, top, right, bottom, color)
     )
 end
 
+-- Lua 5.0 does not consistently expose math.atan2, so normalize atan(y/x)
+-- explicitly. The returned angle follows the HP path's screen-space sweep:
+-- 180 degrees at the left endpoint, 270 at the top, 360 at the right, and
+-- 450 at the lower endpoint.
+local function hpArcDegrees(deltaX, deltaY)
+    local angle
+    if deltaX > 0 then
+        angle = math.atan(deltaY / deltaX)
+    elseif deltaX < 0 then
+        angle = math.atan(deltaY / deltaX)
+        if deltaY >= 0 then
+            angle = angle + math.pi
+        else
+            angle = angle - math.pi
+        end
+    elseif deltaY < 0 then
+        angle = -math.pi / 2
+    elseif deltaY > 0 then
+        angle = math.pi / 2
+    else
+        return 180
+    end
+
+    local degrees = angle * 180 / math.pi
+    if degrees < 180 then
+        degrees = degrees + 360
+    end
+    return degrees
+end
+
+local function hpRunsEqual(left, right)
+    if left == nil or right == nil or #left ~= #right then
+        return false
+    end
+    local index
+    for index = 1, #left do
+        if left[index].x ~= right[index].x
+            or left[index].width ~= right[index].width
+        then
+            return false
+        end
+    end
+    return true
+end
+
 local function addHpPathLayer(
     rectangles,
     hpAmount,
@@ -773,90 +824,131 @@ local function addHpPathLayer(
 
     local scale = hp.SCALE
     local resolvedSize = math.max(1, round(size * scale))
+    local halfSize = resolvedSize / 2
     local curveAmount = math.min(amount, hp.CURVE_HP)
-    local radiusX = math.max(
+    local radius = math.max(
         1,
-        (hp.CURVE_RADIUS_X - inwardInset) * scale
+        (hp.CURVE_RADIUS - inwardInset) * scale
     )
-    local radiusY = math.max(
-        1,
-        (hp.CURVE_RADIUS_Y - inwardInset) * scale
-    )
-    local point
-    for point = 0, curveAmount do
-        local angleDegrees =
-            180
-            + hp.CURVE_SWEEP_DEGREES * point / hp.CURVE_HP
-        local angle = angleDegrees * math.pi / 180
-        local centerX =
-            hp.CENTER_X + math.cos(angle) * radiusX
-        local centerY =
-            hp.CENTER_Y + math.sin(angle) * radiusY
-        if point == 0 then
-            -- The supplied path begins with a flat lower cut at its left end.
-            addRectangle(
-                rectangles,
-                centerX - resolvedSize / 2,
-                centerY - resolvedSize / 2,
-                resolvedSize,
-                math.max(1, math.floor(resolvedSize / 2) + 2),
-                color
-            )
-        elseif point == curveAmount and curveAmount <= 25 then
-            -- Through the quarter-curve checkpoint, retain the reference's
-            -- flat right-side endpoint instead of a square overhang.
-            addRectangle(
-                rectangles,
-                centerX - resolvedSize / 2,
-                centerY - resolvedSize / 2,
-                math.max(1, resolvedSize - 2),
-                resolvedSize,
-                color
-            )
-        elseif point == curveAmount and curveAmount <= 50 then
-            -- The half-curve endpoint has the matching flat lower cut.
-            addRectangle(
-                rectangles,
-                centerX - resolvedSize / 2,
-                centerY - resolvedSize / 2,
-                resolvedSize,
-                math.max(1, resolvedSize - 2),
-                color
-            )
-        else
-            addRectangle(
-                rectangles,
-                centerX - resolvedSize / 2,
-                centerY - resolvedSize / 2,
-                resolvedSize,
-                resolvedSize,
-                color
-            )
-        end
-    end
-
+    local maximumArcDegrees =
+        hp.CURVE_SWEEP_DEGREES * curveAmount / hp.CURVE_HP
+    local straightLength = 0
     if amount > hp.CURVE_HP then
         local straightAmount =
             (amount - hp.CURVE_HP)
             / (hp.MAXIMUM_HP - hp.CURVE_HP)
-        local length = math.max(
+        straightLength = math.max(
             1,
             round(hp.STRAIGHT_MAX_LENGTH * scale * straightAmount)
         )
-        local centerY = hp.CENTER_Y + radiusY
-        addRectangle(
-            rectangles,
-            hp.CENTER_X - length,
-            centerY - resolvedSize / 2,
-            length,
-            resolvedSize,
-            color
-        )
+    end
+
+    -- Rasterize the circular stroke by testing pixel centers against a true
+    -- annulus and the active angular sweep. This produces a circular outside
+    -- edge at every diagonal instead of the swollen outline created by large
+    -- overlapping square stamps. The straight section is unioned into the
+    -- same rows so its tangent join remains seamless.
+    local outerRadius = radius + halfSize
+    local innerRadius = math.max(0, radius - halfSize)
+    local outerSquared = outerRadius * outerRadius
+    local innerSquared = innerRadius * innerRadius
+    local straightCenterY = hp.CENTER_Y + radius
+    local leftBound = math.floor(math.min(
+        hp.CENTER_X - outerRadius,
+        hp.CENTER_X - straightLength
+    ) - 1)
+    local rightBound = math.ceil(hp.CENTER_X + outerRadius + 1)
+    local topBound = math.floor(hp.CENTER_Y - outerRadius - 1)
+    local bottomBound = math.ceil(hp.CENTER_Y + outerRadius + 1)
+    local previousRuns = nil
+    local previousRectangleIndices = nil
+    local y
+    for y = topBound, bottomBound do
+        local runs = {}
+        local runStart = nil
+        local x
+        for x = leftBound, rightBound do
+            local pixelX = x + 0.5
+            local pixelY = y + 0.5
+            local deltaX = pixelX - hp.CENTER_X
+            local deltaY = pixelY - hp.CENTER_Y
+            local distanceSquared =
+                deltaX * deltaX + deltaY * deltaY
+            local onStraight =
+                straightLength > 0
+                and pixelX >= hp.CENTER_X - straightLength
+                and pixelX <= hp.CENTER_X
+                and pixelY >= straightCenterY - halfSize
+                and pixelY <= straightCenterY + halfSize
+            local onArc = false
+            if not onStraight
+                and distanceSquared >= innerSquared
+                and distanceSquared <= outerSquared
+            then
+                local degrees = hpArcDegrees(deltaX, deltaY)
+                local arcProgress = degrees - 180
+                onArc =
+                    arcProgress >= 0
+                    and arcProgress <= maximumArcDegrees
+            end
+            local active = onArc or onStraight
+            if active and runStart == nil then
+                runStart = x
+            elseif not active and runStart ~= nil then
+                runs[#runs + 1] = {
+                    x = runStart,
+                    width = x - runStart,
+                }
+                runStart = nil
+            end
+        end
+        if runStart ~= nil then
+            runs[#runs + 1] = {
+                x = runStart,
+                width = rightBound + 1 - runStart,
+            }
+        end
+
+        -- Adjacent scanlines with identical spans are merged vertically.
+        -- This is lossless and keeps the smooth curve comfortably inside the
+        -- verified native geometry buffer even while LIMIT is pulsing.
+        if #runs > 0 and hpRunsEqual(runs, previousRuns) then
+            local runIndex
+            for runIndex = 1, #runs do
+                local rectangle =
+                    rectangles[previousRectangleIndices[runIndex]]
+                rectangle.height = rectangle.height + 1
+            end
+        else
+            previousRuns = runs
+            previousRectangleIndices = {}
+            local runIndex
+            for runIndex = 1, #runs do
+                addRectangle(
+                    rectangles,
+                    runs[runIndex].x,
+                    y,
+                    runs[runIndex].width,
+                    1,
+                    color
+                )
+                previousRectangleIndices[runIndex] = #rectangles
+            end
+        end
+        if #runs == 0 then
+            previousRuns = nil
+            previousRectangleIndices = nil
+        end
     end
 end
 
+local hpGeometryCache = {
+    current = nil,
+    maximum = nil,
+    rectangles = nil,
+}
+
 local function buildHpRectangles(currentHp, maximumHp)
-    local rectangles = {}
     local hp = CONFIG.HP
     local maximum = clamp(
         math.floor(tonumber(maximumHp) or 1),
@@ -868,6 +960,14 @@ local function buildHpRectangles(currentHp, maximumHp)
         0,
         maximum
     )
+    if hpGeometryCache.current == current
+        and hpGeometryCache.maximum == maximum
+        and hpGeometryCache.rectangles ~= nil
+    then
+        return hpGeometryCache.rectangles
+    end
+
+    local rectangles = {}
 
     -- Capacity: black outline plus a three-stop inward gray gradient.
     addHpPathLayer(
@@ -921,6 +1021,9 @@ local function buildHpRectangles(currentHp, maximumHp)
         hp.INNER_INSET,
         hp.FILL_INNER_COLOR
     )
+    hpGeometryCache.current = current
+    hpGeometryCache.maximum = maximum
+    hpGeometryCache.rectangles = rectangles
     return rectangles
 end
 
@@ -1494,10 +1597,8 @@ local function validateConfiguration()
         or hp.CURVE_HP ~= 75
         or hp.CURVE_SWEEP_DEGREES ~= 270
         or hp.MAXIMUM_HP ~= 255
-        or type(hp.CURVE_RADIUS_X) ~= "number"
-        or type(hp.CURVE_RADIUS_Y) ~= "number"
-        or hp.CURVE_RADIUS_X < 4
-        or hp.CURVE_RADIUS_Y < 4
+        or type(hp.CURVE_RADIUS) ~= "number"
+        or hp.CURVE_RADIUS < 4
         or type(hp.STRAIGHT_MAX_LENGTH) ~= "number"
         or hp.STRAIGHT_MAX_LENGTH < 1
         or type(hp.OUTLINE_SIZE) ~= "number"
@@ -1512,8 +1613,7 @@ local function validateConfiguration()
         or type(hp.INNER_INSET) ~= "number"
         or hp.MIDDLE_INSET < 0
         or hp.INNER_INSET <= hp.MIDDLE_INSET
-        or hp.INNER_INSET >= hp.CURVE_RADIUS_X
-        or hp.INNER_INSET >= hp.CURVE_RADIUS_Y
+        or hp.INNER_INSET >= hp.CURVE_RADIUS
     then
         return false, "HP path position/capacity/layer settings are invalid"
     end
@@ -2290,16 +2390,14 @@ function _OnFrame()
         end
 
         runtime.installed = true
-        log("READY: curved HP + always-live custom MP + exact pulsing LIMIT HUD; "
+        log("READY: smooth circular HP + always-live custom MP + exact pulsing LIMIT HUD; "
             .. tostring(installReason) .. ".")
         log("NATIVE HP REMOVED: outline, capacity, fill, backing layer, and label.")
         log("NATIVE MP REMOVED: outline, fill, charge strip, capacity caps, layer, and label.")
         log("NATIVE HUD PRESERVED: Sora face image and every non-Sora HUD sprite.")
         log("HP LAYOUT: center X=" .. tostring(CONFIG.HP.CENTER_X)
             .. " Y=" .. tostring(CONFIG.HP.CENTER_Y)
-            .. " radius="
-            .. tostring(CONFIG.HP.CURVE_RADIUS_X)
-            .. "x" .. tostring(CONFIG.HP.CURVE_RADIUS_Y)
+            .. " radius=" .. tostring(CONFIG.HP.CURVE_RADIUS)
             .. " curve=1.." .. tostring(CONFIG.HP.CURVE_HP)
             .. " straight=" .. tostring(CONFIG.HP.CURVE_HP + 1)
             .. ".." .. tostring(CONFIG.HP.MAXIMUM_HP)
