@@ -1,9 +1,9 @@
-LUAGUI_NAME = "KH1FM Custom MP Bar + LIMIT Gauge v1.1"
+LUAGUI_NAME = "KH1FM Custom MP Bar + LIMIT Gauge v1.2"
 LUAGUI_AUTH = "OpenAI"
-LUAGUI_DESC = "Always-live custom MP bar plus exact five-slot LIMIT gauge with a full-state teal/white outline pulse."
+LUAGUI_DESC = "Max-MP-scaled custom bar plus exact five-slot LIMIT gauge with synchronized outline/text pulsing."
 
 --[[
-    KH1FM CUSTOM MP BAR + LIMIT GAUGE v1.1
+    KH1FM CUSTOM MP BAR + LIMIT GAUGE v1.2
     Target: KINGDOM HEARTS FINAL MIX.exe, Steam Global 1.0.0.2
     SHA-256: d790746245d26159f3ee0e1060e33b2fa2de06941850a4ac724f598722884bac
     Runtime: LuaBackendHook v1.9.1-hook / LuaEngine v5.0
@@ -11,23 +11,28 @@ LUAGUI_DESC = "Always-live custom MP bar plus exact five-slot LIMIT gauge with a
     PURPOSE
       * Removes Sora's native MP gauge, MP Charge strip, MP capacity packets,
         and native MP label.
-      * Draws a separate proportional MP bar based on the supplied 640x448
-        "Mp Full" and "Mp empty" references.
-      * Default MP bounds are exactly X=31..124 and Y=25..31: a 94x7 black
-        bordered bar with a 92x5 interior.
-      * The empty interior uses the supplied gray vertical shading. The filled
-        interior uses the supplied purple shading and changes continuously
-        with current MP / equipment-adjusted maximum MP.
-      * Position, master scale, length, height, colors, direction, label text,
-        label position, label color, and font size are editable in CONFIG.MP.
+      * Draws a separate proportional MP bar based on the supplied 10-MP and
+        255-MP empty/full references.
+      * The bar's right edge stays fixed. Capacity is exactly 7x7 at 10 maximum
+        MP and exactly 179x7 at 255 maximum MP, with every intermediate maximum
+        interpolated continuously. Capacity growth therefore extends left.
+      * Current MP fills only the capacity that exists for Sora's live maximum.
+        EMPTY_DIRECTION can make spent MP empty from left to right or from
+        right to left.
+      * The empty and filled interiors use separately editable five-stop
+        top-to-bottom gradients sampled from the supplied references.
+      * Position, scale, minimum/maximum length, height, colors, depletion
+        direction, label text, label position, label color, and font size are
+        editable in CONFIG.MP.
       * Keeps Sora's native portrait and main HP gauge.
       * Retains the five 20-point LIMIT thresholds and reconstructs the new
         supplied 0, 80, and 100 references exactly.
       * At 20..80, filled slots are red inside the normal gray/black backs.
         At 100, all five red slots switch to a teal outline.
-      * While LIMIT remains at 100, only that teal outline slowly pulses to
-        white and back. Pulse enable, speed, steps, and endpoint colors are
-        editable without changing LIMIT mechanics.
+      * While LIMIT remains at 100, the teal outline and the LIMIT text pulse
+        together to white and back. Pulse enable, speed, steps, independent
+        outline/text endpoint colors, and text inclusion are editable without
+        changing LIMIT mechanics.
       * Reads current and maximum MP directly from Sora's live stat page every
         frame, using the same pointer resolution as MP Haste/Rage v6. This has
         no combat gate, so the custom MP bar updates during exploration too.
@@ -44,8 +49,8 @@ LUAGUI_DESC = "Always-live custom MP bar plus exact five-slot LIMIT gauge with a
         100       = slots 1-5 filled
 
     COMPATIBILITY
-      * Replaces Custom MP Bar + LIMIT Gauge v1 and LIMIT Gauge v2.2; do not
-        enable any of those older scripts at the same time.
+      * Replaces Custom MP Bar + LIMIT Gauge v1/v1.1 and LIMIT Gauge v2.2; do
+        not enable any of those older scripts at the same time.
       * Provides the two pass-through signatures required by Enemy HP HUD v4.1.
       * Owns module+0x3AF300..0x3AF700, module+0x3AFE00..0x3AFE40,
         the proven post-loop hook, and MP-only suppression sites.
@@ -54,9 +59,9 @@ LUAGUI_DESC = "Always-live custom MP bar plus exact five-slot LIMIT gauge with a
       * Does not touch EnemyConfig, MP Haste/Rage, equipment bonuses, damage,
         animation, movement, BGM, or enemy data.
 
-    Disable Custom MP Bar + LIMIT Gauge v1, LIMIT Gauge v2.2, and every older
-    Numeric, Graphic, and Texture Sora HUD before using this file. Fully
-    restart KH1FM; do not switch to it with F1.
+    Disable Custom MP Bar + LIMIT Gauge v1/v1.1, LIMIT Gauge v2.2, and every
+    older Numeric, Graphic, and Texture Sora HUD before using this file.
+    Fully restart KH1FM; do not switch to it with F1.
 ]]
 
 -- =========================================================================
@@ -69,29 +74,53 @@ local CONFIG = {
 
     -- Custom MP bar. Coordinates use KH1's native 640x448 HUD space.
     MP = {
-        X = 31,
-        -- Y=38 places the MP bar directly below the default LIMIT gauge.
-        Y = 38,
+        -- RIGHT_X is the fixed exclusive right edge. Capacity growth extends
+        -- left from this point, matching all four supplied references.
+        RIGHT_X = 210,
+        Y = 25,
         SCALE = 1.00,
-        LENGTH = 94,
+
+        -- Capacity interpolation endpoints. Defaults match the references:
+        -- Max MP 10  -> outer width 7  (X=203..209)
+        -- Max MP 255 -> outer width 179 (X=31..209)
+        MINIMUM_MAX_MP = 10,
+        MAXIMUM_MAX_MP = 255,
+        MINIMUM_LENGTH = 7,
+        MAXIMUM_LENGTH = 179,
+
         HEIGHT = 7,
         BORDER = 1,
 
-        -- "LEFT_TO_RIGHT" or "RIGHT_TO_LEFT".
-        FILL_DIRECTION = "RIGHT_TO_LEFT",
+        -- Direction in which purple MP disappears as current MP is spent:
+        -- "LEFT_TO_RIGHT" keeps the remaining fill anchored on the right.
+        -- "RIGHT_TO_LEFT" keeps the remaining fill anchored on the left.
+        EMPTY_DIRECTION = "LEFT_TO_RIGHT",
 
         -- KH1 HUD colors use AABBGGRR; 0x80 is full native opacity.
-        -- These top-row colors are sampled from the supplied references.
-        -- The lower rows are shaded automatically from these values.
-        FILL_COLOR = 0x80E41853,  -- RGB 83,24,228
-        EMPTY_COLOR = 0x80565656, -- RGB 86,86,86
+        -- Every vertical stop is directly adjustable. Defaults reproduce the
+        -- reference's five purple rows and five gray rows.
+        FILL_GRADIENT = {
+            TOP_COLOR = 0x80E41853,          -- RGB 83,24,228
+            UPPER_COLOR = 0x80CB164B,        -- RGB 75,22,203
+            MIDDLE_COLOR = 0x80B11442,       -- RGB 66,20,177
+            LOWER_COLOR = 0x80991239,        -- RGB 57,18,153
+            BOTTOM_COLOR = 0x808C1135,       -- RGB 53,17,140
+        },
+        EMPTY_GRADIENT = {
+            TOP_COLOR = 0x80565656,          -- RGB 86,86,86
+            UPPER_COLOR = 0x80545454,        -- RGB 84,84,84
+            MIDDLE_COLOR = 0x80525252,       -- RGB 82,82,82
+            LOWER_COLOR = 0x80525252,        -- RGB 82,82,82
+            BOTTOM_COLOR = 0x804F4F4F,       -- RGB 79,79,79
+        },
         BORDER_COLOR = 0x80000000,
 
         LABEL = {
             ENABLE = true,
             TEXT = "MP",
-            X = 8,
-            Y = 100,
+            -- Kept to the right of the fixed bar endpoint.
+            X = 214,
+            Y = 24,
             COLOR = 0x80E41853,
             FONT_SIZE = 8,
         },
@@ -99,7 +128,7 @@ local CONFIG = {
         -- Visual-only live-value override.
         -- PREVIEW_CURRENT=-1 uses live MP. Otherwise use 0..PREVIEW_MAXIMUM.
         PREVIEW_CURRENT = -1,
-        PREVIEW_MAXIMUM = 10,
+        PREVIEW_MAXIMUM = 255,
     },
 
     -- Exact base placement from the three supplied 640x448 references.
@@ -163,14 +192,17 @@ local CONFIG = {
         BLACK_BACK = 0x80000000,
     },
 
-    -- Visual-only outline animation used strictly while LIMIT is exactly 100.
-    -- One cycle travels TEAL -> WHITE -> TEAL.
+    -- Visual-only animation used strictly while LIMIT is exactly 100.
+    -- One cycle travels START -> PEAK -> START for both the outline and text.
     FULL_PULSE = {
         ENABLE = true,
+        INCLUDE_LIMIT_TEXT = true,
         CYCLE_SECONDS = 3.00,
         COLOR_STEPS = 30,
-        TEAL_COLOR = 0x80FFEE00,  -- RGB 0,238,255
-        WHITE_COLOR = 0x80FFFFFF, -- RGB 255,255,255
+        OUTLINE_START_COLOR = 0x80FFEE00, -- RGB 0,238,255
+        OUTLINE_PEAK_COLOR = 0x80FFFFFF,  -- RGB 255,255,255
+        TEXT_START_COLOR = 0x80FFEE00,    -- RGB 0,238,255
+        TEXT_PEAK_COLOR = 0x80FFFFFF,     -- RGB 255,255,255
     },
 
     -- Kept as a named setting so all threshold logic stays explicit.
@@ -188,7 +220,7 @@ local CONFIG = {
 -- VERIFIED BUILD CONSTANTS -- DO NOT EDIT
 -- =========================================================================
 
-local PREFIX = "[CustomMpLimitV1.1] "
+local PREFIX = "[CustomMpLimitV1.2] "
 
 local VERSION_SENTINEL_RVA = 0x3B2271
 local VERSION_VALUE = 0x7265737563697065
@@ -354,6 +386,7 @@ local runtime = {
     lastCurrentMp = nil,
     lastMaximumMp = nil,
     lastFullOutlineColor = nil,
+    lastFullLabelColor = nil,
     pulseFrame = 0,
     directMpLogged = false,
     effectiveMpLogged = false,
@@ -750,10 +783,10 @@ local function blendedColor(first, second, amount)
     return red + green * 256 + blue * 65536 + alpha * 16777216
 end
 
-local function fullOutlineColor()
+local function fullPulseAmount()
     local pulse = CONFIG.FULL_PULSE
     if not pulse.ENABLE then
-        return pulse.TEAL_COLOR
+        return 0
     end
     local hertz = readRuntimeHertz()
     local cycleFrames = math.max(
@@ -763,60 +796,82 @@ local function fullOutlineColor()
     local phase = (runtime.pulseFrame % cycleFrames) / cycleFrames
     local amount =
         (1 - math.cos(phase * 6.283185307179586)) / 2
-    amount = round(amount * pulse.COLOR_STEPS) / pulse.COLOR_STEPS
-    return blendedColor(
-        pulse.TEAL_COLOR,
-        pulse.WHITE_COLOR,
+    return round(amount * pulse.COLOR_STEPS) / pulse.COLOR_STEPS
+end
+
+local function fullPulseColors()
+    local pulse = CONFIG.FULL_PULSE
+    local amount = fullPulseAmount()
+    local outlineColor = blendedColor(
+        pulse.OUTLINE_START_COLOR,
+        pulse.OUTLINE_PEAK_COLOR,
         amount
     )
-end
-
-local function scaledChannel(value, numerator, denominator)
-    return clamp(round(value * numerator / denominator), 0, 255)
-end
-
-local function shadedColor(color, redNumerator, redDenominator,
-    greenNumerator, greenDenominator, blueNumerator, blueDenominator)
-    local red, green, blue, alpha = colorChannels(color)
-    red = scaledChannel(red, redNumerator, redDenominator)
-    green = scaledChannel(green, greenNumerator, greenDenominator)
-    blue = scaledChannel(blue, blueNumerator, blueDenominator)
-    return red + green * 256 + blue * 65536 + alpha * 16777216
+    local labelColor = nil
+    if pulse.INCLUDE_LIMIT_TEXT then
+        labelColor = blendedColor(
+            pulse.TEXT_START_COLOR,
+            pulse.TEXT_PEAK_COLOR,
+            amount
+        )
+    end
+    return outlineColor, labelColor
 end
 
 local function mpBandColors()
     local mp = CONFIG.MP
+    local emptyGradient = mp.EMPTY_GRADIENT
+    local fillGradient = mp.FILL_GRADIENT
     local empty = {
-        mp.EMPTY_COLOR,
-        shadedColor(mp.EMPTY_COLOR, 84, 86, 84, 86, 84, 86),
-        shadedColor(mp.EMPTY_COLOR, 82, 86, 82, 86, 82, 86),
-        shadedColor(mp.EMPTY_COLOR, 79, 86, 79, 86, 79, 86),
+        emptyGradient.TOP_COLOR,
+        emptyGradient.UPPER_COLOR,
+        emptyGradient.MIDDLE_COLOR,
+        emptyGradient.BOTTOM_COLOR,
     }
     local filled = {
-        mp.FILL_COLOR,
-        shadedColor(mp.FILL_COLOR, 75, 83, 22, 24, 203, 228),
-        -- The renderer's four-band budget combines the supplied third and
-        -- fourth one-pixel purple rows into one exact two-pixel middle band.
-        shadedColor(mp.FILL_COLOR, 62, 83, 19, 24, 166, 228),
-        shadedColor(mp.FILL_COLOR, 53, 83, 17, 24, 140, 228),
+        fillGradient.TOP_COLOR,
+        fillGradient.UPPER_COLOR,
+        -- The four-band partial state combines the reference's middle and
+        -- lower one-pixel rows into one two-pixel native rectangle.
+        fillGradient.MIDDLE_COLOR,
+        fillGradient.BOTTOM_COLOR,
+    }
+    local exactEmpty = {
+        emptyGradient.TOP_COLOR,
+        emptyGradient.UPPER_COLOR,
+        emptyGradient.MIDDLE_COLOR,
+        emptyGradient.LOWER_COLOR,
+        emptyGradient.BOTTOM_COLOR,
     }
     local exactFull = {
-        mp.FILL_COLOR,
-        shadedColor(mp.FILL_COLOR, 75, 83, 22, 24, 203, 228),
-        shadedColor(mp.FILL_COLOR, 66, 83, 20, 24, 177, 228),
-        shadedColor(mp.FILL_COLOR, 57, 83, 18, 24, 153, 228),
-        shadedColor(mp.FILL_COLOR, 53, 83, 17, 24, 140, 228),
+        fillGradient.TOP_COLOR,
+        fillGradient.UPPER_COLOR,
+        fillGradient.MIDDLE_COLOR,
+        fillGradient.LOWER_COLOR,
+        fillGradient.BOTTOM_COLOR,
     }
-    return empty, filled, exactFull
+    return empty, filled, exactEmpty, exactFull
 end
 
 local function buildMpRectangles(currentMp, maximumMp)
     local rectangles = {}
     local mp = CONFIG.MP
     local scale = mp.SCALE
-    local x = round(mp.X)
+    local resolvedMaximum = clamp(
+        tonumber(maximumMp) or mp.MINIMUM_MAX_MP,
+        mp.MINIMUM_MAX_MP,
+        mp.MAXIMUM_MAX_MP
+    )
+    local capacityAmount =
+        (resolvedMaximum - mp.MINIMUM_MAX_MP)
+        / (mp.MAXIMUM_MAX_MP - mp.MINIMUM_MAX_MP)
+    local unscaledWidth =
+        mp.MINIMUM_LENGTH
+        + (mp.MAXIMUM_LENGTH - mp.MINIMUM_LENGTH) * capacityAmount
+    local width = math.max(3, round(unscaledWidth * scale))
+    local right = round(mp.RIGHT_X)
+    local x = right - width
     local y = round(mp.Y)
-    local width = math.max(3, round(mp.LENGTH * scale))
     local height = math.max(3, round(mp.HEIGHT * scale))
     local border = math.max(1, round(mp.BORDER * scale))
     local innerX = x + border
@@ -831,11 +886,25 @@ local function buildMpRectangles(currentMp, maximumMp)
 
     addRectangle(rectangles, x, y, width, height, mp.BORDER_COLOR)
 
-    local emptyColors, fillColors, exactFullColors = mpBandColors()
+    local emptyColors, fillColors, exactEmptyColors, exactFullColors =
+        mpBandColors()
     local starts = { 0, 1, 2, 4 }
     local ends = { 1, 2, 4, 5 }
     local index
-    if fillWidth < innerWidth then
+    if fillWidth == 0 then
+        for index = 1, 5 do
+            local top = round(innerY + innerHeight * (index - 1) / 5)
+            local bottom = round(innerY + innerHeight * index / 5)
+            addRectangle(
+                rectangles,
+                innerX,
+                top,
+                innerWidth,
+                math.max(1, bottom - top),
+                exactEmptyColors[index]
+            )
+        end
+    elseif fillWidth < innerWidth then
         for index = 1, 4 do
             local top = round(innerY + innerHeight * starts[index] / 5)
             local bottom = round(innerY + innerHeight * ends[index] / 5)
@@ -852,7 +921,7 @@ local function buildMpRectangles(currentMp, maximumMp)
 
     if fillWidth > 0 then
         local fillX = innerX
-        if mp.FILL_DIRECTION == "RIGHT_TO_LEFT" then
+        if mp.EMPTY_DIRECTION == "LEFT_TO_RIGHT" then
             fillX = innerX + innerWidth - fillWidth
         end
         if fillWidth == innerWidth then
@@ -928,12 +997,19 @@ local function serializeRectangles(rectangles)
     return bytes
 end
 
-local function labelBytes(label, originX, originY, scale, sentinel)
+local function labelBytes(
+    label,
+    originX,
+    originY,
+    scale,
+    sentinel,
+    colorOverride
+)
     local bytes = {}
     appendU32(bytes, label.ENABLE and 1 or 0)
     appendU32(bytes, round(originX + label.X * scale))
     appendU32(bytes, round(originY + label.Y * scale))
-    appendU32(bytes, label.COLOR)
+    appendU32(bytes, colorOverride or label.COLOR)
     appendU32(bytes, clamp(round(label.FONT_SIZE * scale), 4, 32))
     local text = tostring(label.TEXT or "")
     local index
@@ -948,20 +1024,21 @@ local function labelBytes(label, originX, originY, scale, sentinel)
     return bytes
 end
 
-local function auxiliaryBytes()
+local function auxiliaryBytes(limitLabelColor)
     local output = {}
     local limitLabel = labelBytes(
         CONFIG.LIMIT_LABEL,
         CONFIG.ORIGIN.X,
         CONFIG.ORIGIN.Y,
         CONFIG.ORIGIN.SCALE,
-        AUX_SENTINEL
+        AUX_SENTINEL,
+        limitLabelColor
     )
     local mpLabel = labelBytes(
         CONFIG.MP.LABEL,
         0,
         0,
-        CONFIG.MP.SCALE,
+        1,
         AUX_SENTINEL
     )
     local index
@@ -974,7 +1051,7 @@ local function auxiliaryBytes()
     return output
 end
 
-local function publishRectangles(rectangles)
+local function publishRectangles(rectangles, limitLabelColor)
     local records, reason = serializeRectangles(rectangles)
     if records == nil then
         return false, reason
@@ -1000,7 +1077,8 @@ local function publishRectangles(rectangles)
     if not ok then
         return false, "could not suspend traversal: " .. tostring(writeReason)
     end
-    ok, writeReason = safeWriteArray(AUX_RVA, auxiliaryBytes())
+    ok, writeReason =
+        safeWriteArray(AUX_RVA, auxiliaryBytes(limitLabelColor))
     if not ok then
         return false, "could not publish labels: " .. tostring(writeReason)
     end
@@ -1042,26 +1120,60 @@ local function validateLabel(label, name)
     return true
 end
 
+local GRADIENT_COLOR_KEYS = {
+    "TOP_COLOR",
+    "UPPER_COLOR",
+    "MIDDLE_COLOR",
+    "LOWER_COLOR",
+    "BOTTOM_COLOR",
+}
+
+local function validateGradient(gradient, name)
+    if type(gradient) ~= "table" then
+        return false, name .. " must be a five-color table"
+    end
+    local index
+    for index = 1, #GRADIENT_COLOR_KEYS do
+        local color = gradient[GRADIENT_COLOR_KEYS[index]]
+        if type(color) ~= "number"
+            or color < 0
+            or color > 4294967295
+        then
+            return false, name .. "." .. GRADIENT_COLOR_KEYS[index]
+                .. " is not a 32-bit AABBGGRR color"
+        end
+    end
+    return true
+end
+
 local function validateConfiguration()
     local mp = CONFIG.MP
     if type(mp) ~= "table"
-        or type(mp.X) ~= "number"
+        or type(mp.RIGHT_X) ~= "number"
         or type(mp.Y) ~= "number"
         or type(mp.SCALE) ~= "number"
         or mp.SCALE <= 0
         or mp.SCALE > 4
-        or type(mp.LENGTH) ~= "number"
+        or type(mp.MINIMUM_MAX_MP) ~= "number"
+        or type(mp.MAXIMUM_MAX_MP) ~= "number"
+        or mp.MINIMUM_MAX_MP < 1
+        or mp.MAXIMUM_MAX_MP > 255
+        or mp.MINIMUM_MAX_MP >= mp.MAXIMUM_MAX_MP
+        or type(mp.MINIMUM_LENGTH) ~= "number"
+        or type(mp.MAXIMUM_LENGTH) ~= "number"
+        or mp.MINIMUM_LENGTH < 3
+        or mp.MINIMUM_LENGTH >= mp.MAXIMUM_LENGTH
         or type(mp.HEIGHT) ~= "number"
         or type(mp.BORDER) ~= "number"
-        or mp.LENGTH < 3
         or mp.HEIGHT < 3
         or mp.BORDER < 1
-        or (mp.FILL_DIRECTION ~= "LEFT_TO_RIGHT"
-            and mp.FILL_DIRECTION ~= "RIGHT_TO_LEFT")
+        or (mp.EMPTY_DIRECTION ~= "LEFT_TO_RIGHT"
+            and mp.EMPTY_DIRECTION ~= "RIGHT_TO_LEFT")
     then
-        return false, "MP position/size/direction settings are invalid"
+        return false,
+            "MP capacity/position/size/depletion settings are invalid"
     end
-    local effectiveWidth = round(mp.LENGTH * mp.SCALE)
+    local effectiveWidth = round(mp.MINIMUM_LENGTH * mp.SCALE)
     local effectiveHeight = round(mp.HEIGHT * mp.SCALE)
     local effectiveBorder = math.max(1, round(mp.BORDER * mp.SCALE))
     if effectiveWidth - effectiveBorder * 2 < 1
@@ -1073,6 +1185,7 @@ local function validateConfiguration()
         or type(mp.PREVIEW_MAXIMUM) ~= "number"
         or mp.PREVIEW_CURRENT < -1
         or mp.PREVIEW_MAXIMUM < 1
+        or mp.PREVIEW_MAXIMUM > 255
         or (mp.PREVIEW_CURRENT >= 0
             and mp.PREVIEW_CURRENT > mp.PREVIEW_MAXIMUM)
     then
@@ -1082,6 +1195,16 @@ local function validateConfiguration()
         validateLabel(mp.LABEL, "MP.LABEL")
     if not labelOk then
         return false, labelReason
+    end
+    local gradientOk, gradientReason =
+        validateGradient(mp.FILL_GRADIENT, "MP.FILL_GRADIENT")
+    if not gradientOk then
+        return false, gradientReason
+    end
+    gradientOk, gradientReason =
+        validateGradient(mp.EMPTY_GRADIENT, "MP.EMPTY_GRADIENT")
+    if not gradientOk then
+        return false, gradientReason
     end
     if type(CONFIG.ORIGIN) ~= "table"
         or type(CONFIG.ORIGIN.X) ~= "number"
@@ -1100,6 +1223,7 @@ local function validateConfiguration()
     local pulse = CONFIG.FULL_PULSE
     if type(pulse) ~= "table"
         or type(pulse.ENABLE) ~= "boolean"
+        or type(pulse.INCLUDE_LIMIT_TEXT) ~= "boolean"
         or type(pulse.CYCLE_SECONDS) ~= "number"
         or pulse.CYCLE_SECONDS < 0.5
         or pulse.CYCLE_SECONDS > 30
@@ -1169,12 +1293,12 @@ local function validateConfiguration()
         CONFIG.COLORS.EMPTY_CENTER,
         CONFIG.COLORS.BLACK_BACK,
         CONFIG.LIMIT_LABEL.COLOR,
-        mp.FILL_COLOR,
-        mp.EMPTY_COLOR,
         mp.BORDER_COLOR,
         mp.LABEL.COLOR,
-        pulse.TEAL_COLOR,
-        pulse.WHITE_COLOR,
+        pulse.OUTLINE_START_COLOR,
+        pulse.OUTLINE_PEAK_COLOR,
+        pulse.TEXT_START_COLOR,
+        pulse.TEXT_PEAK_COLOR,
     }
     for index = 1, #colors do
         if type(colors[index]) ~= "number"
@@ -1191,7 +1315,7 @@ local function validateConfiguration()
         return false, "PREVIEW_LIMIT must be -1 or 0..100"
     end
     local limitRectangles =
-        buildLimitRectangles(5, pulse.TEAL_COLOR)
+        buildLimitRectangles(5, pulse.OUTLINE_START_COLOR)
     if #limitRectangles ~= EXACT_LIMIT_RECTANGLE_COUNT then
         return false, "exact layout must generate "
             .. tostring(EXACT_LIMIT_RECTANGLE_COUNT)
@@ -1203,7 +1327,12 @@ local function validateConfiguration()
             .. tostring(EXACT_MP_RECTANGLE_COUNT) .. " rectangles"
     end
     local combined =
-        buildCombinedRectangles(5, 1, 2, pulse.TEAL_COLOR)
+        buildCombinedRectangles(
+            5,
+            mp.MINIMUM_MAX_MP,
+            mp.MAXIMUM_MAX_MP,
+            pulse.OUTLINE_START_COLOR
+        )
     if #combined > MAX_RECTANGLES
         or RECTANGLE_RECORDS_OFFSET
             + #combined * RECTANGLE_RECORD_SIZE > DATA_SIZE
@@ -1211,7 +1340,7 @@ local function validateConfiguration()
         return false, "combined geometry exceeds the private data cache"
     end
     if LABEL_RECORD_SIZE * 2 ~= AUX_SIZE
-        or #auxiliaryBytes() ~= AUX_SIZE
+        or #auxiliaryBytes(pulse.TEXT_START_COLOR) ~= AUX_SIZE
     then
         return false, "two-label auxiliary image is invalid"
     end
@@ -1436,9 +1565,10 @@ local function install()
             buildCombinedRectangles(
                 0,
                 0,
-                1,
-                CONFIG.FULL_PULSE.TEAL_COLOR
-            )
+                CONFIG.MP.MINIMUM_MAX_MP,
+                CONFIG.FULL_PULSE.OUTLINE_START_COLOR
+            ),
+            CONFIG.LIMIT_LABEL.COLOR
         )
     if not dataOk then
         safeWriteArray(AUX_RVA, ZERO_AUX)
@@ -1600,13 +1730,14 @@ local function updateGauge()
     end
 
     local completeOutlineColor = nil
+    local completeLabelColor = nil
     if blocks >= CONFIG.GAUGE.MAX_BLOCKS then
         if runtime.lastBlocks ~= CONFIG.GAUGE.MAX_BLOCKS then
             runtime.pulseFrame = 0
         else
             runtime.pulseFrame = runtime.pulseFrame + 1
         end
-        completeOutlineColor = fullOutlineColor()
+        completeOutlineColor, completeLabelColor = fullPulseColors()
     else
         runtime.pulseFrame = 0
     end
@@ -1615,6 +1746,7 @@ local function updateGauge()
         and currentMp == runtime.lastCurrentMp
         and maximumMp == runtime.lastMaximumMp
         and completeOutlineColor == runtime.lastFullOutlineColor
+        and completeLabelColor == runtime.lastFullLabelColor
     then
         return true
     end
@@ -1626,7 +1758,8 @@ local function updateGauge()
             maximumMp,
             completeOutlineColor
         )
-    local ok, result = publishRectangles(rectangles)
+    local ok, result =
+        publishRectangles(rectangles, completeLabelColor)
     if not ok then
         return false, result
     end
@@ -1634,6 +1767,7 @@ local function updateGauge()
     runtime.lastCurrentMp = currentMp
     runtime.lastMaximumMp = maximumMp
     runtime.lastFullOutlineColor = completeOutlineColor
+    runtime.lastFullLabelColor = completeLabelColor
     if CONFIG.LOG_VALUE_CHANGES
         or limitSource == "preview"
         or mpSource == "preview"
@@ -1697,19 +1831,26 @@ function _OnFrame()
             .. tostring(installReason) .. ".")
         log("NATIVE MP REMOVED: outline, fill, charge strip, capacity caps, layer, and label.")
         log("NATIVE HUD PRESERVED: Sora portrait, main HP gauge, and all non-MP base sprites.")
-        log("MP LAYOUT: X=" .. tostring(CONFIG.MP.X)
+        log("MP LAYOUT: RIGHT_X=" .. tostring(CONFIG.MP.RIGHT_X)
             .. " Y=" .. tostring(CONFIG.MP.Y)
-            .. " LENGTH=" .. tostring(CONFIG.MP.LENGTH)
+            .. " LENGTH="
+            .. tostring(CONFIG.MP.MINIMUM_LENGTH)
+            .. ".." .. tostring(CONFIG.MP.MAXIMUM_LENGTH)
+            .. " FOR MAX_MP="
+            .. tostring(CONFIG.MP.MINIMUM_MAX_MP)
+            .. ".." .. tostring(CONFIG.MP.MAXIMUM_MAX_MP)
             .. " HEIGHT=" .. tostring(CONFIG.MP.HEIGHT)
             .. " SCALE=" .. tostring(CONFIG.MP.SCALE)
+            .. " EMPTY_DIRECTION="
+            .. tostring(CONFIG.MP.EMPTY_DIRECTION)
             .. " LABEL=\"" .. tostring(CONFIG.MP.LABEL.TEXT) .. "\".")
         log("LIMIT LAYOUT: base origin X=" .. tostring(CONFIG.ORIGIN.X)
             .. " Y=" .. tostring(CONFIG.ORIGIN.Y)
             .. " SCALE=" .. tostring(CONFIG.ORIGIN.SCALE) .. ".")
         log("THRESHOLDS: 20, 40, 60, 80, and 100 LIMIT.")
-        log("FULL LIMIT: teal outline pulses to white and back every "
+        log("FULL LIMIT: outline and LIMIT text pulse together every "
             .. tostring(CONFIG.FULL_PULSE.CYCLE_SECONDS)
-            .. " seconds; mechanics are unchanged.")
+            .. " seconds; speed and colors are adjustable; mechanics are unchanged.")
     end
 
     local updateOk, updateReason = updateGauge()
