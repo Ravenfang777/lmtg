@@ -178,14 +178,14 @@ local CONFIG = {
         },
         {
             ENABLE = true,
-            X = 212, Y = 125,
+            X = 216, Y = 125,
             WIDTH = 16, HEIGHT = 8,
             COLOR = 0x80000000,
         },
         {
             ENABLE = true,
             FOLLOW_HP_MAXIMUM = true,
-            WIDTH = 3, HEIGHT = 16,
+            WIDTH = 3, HEIGHT = 18,
             COLOR = 0x80000000,
 
             -- Fine adjustment in native 640x448 HUD pixels. ALONG_OFFSET
@@ -193,7 +193,7 @@ local CONFIG = {
             -- the path. X/Y offsets are fixed screen-space corrections.
             ALONG_OFFSET = 0,
             NORMAL_OFFSET = 0,
-            X_OFFSET = 0,
+            X_OFFSET = -2,
             Y_OFFSET = 0,
 
             -- The box automatically follows the HP tangent. This value adds
