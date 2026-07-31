@@ -77,7 +77,7 @@ local CONFIG = {
         -- RIGHT_X is the fixed exclusive right edge. Capacity growth extends
         -- left from this point, matching all four supplied references.
         RIGHT_X = 210,
-        Y = 75,
+        Y = 105,
         SCALE = 1.00,
 
         -- Capacity interpolation endpoints. Defaults match the references:
@@ -88,8 +88,8 @@ local CONFIG = {
         MINIMUM_LENGTH = 10,
         MAXIMUM_LENGTH = 255,
 
-        HEIGHT = 7,
-        BORDER = 1,
+        HEIGHT = 6,
+        BORDER = 2,
 
         -- Direction in which purple MP disappears as current MP is spent:
         -- "LEFT_TO_RIGHT" keeps the remaining fill anchored on the right.
@@ -120,7 +120,7 @@ local CONFIG = {
             TEXT = "MP",
             -- Kept to the right of the fixed bar endpoint.
             X = 214,
-            Y = 24,
+            Y = 104,
             COLOR = 0x80E41853,
             FONT_SIZE = 8,
         },
