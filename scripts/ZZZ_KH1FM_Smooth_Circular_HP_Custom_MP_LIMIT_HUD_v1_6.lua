@@ -177,7 +177,7 @@ local CONFIG = {
     MP = {
         -- RIGHT_X is the fixed exclusive right edge. Capacity growth extends
         -- left from this point, matching all four supplied references.
-        RIGHT_X = 213,
+        RIGHT_X = 223,
         Y = 146,
         SCALE = 1.00,
 
@@ -187,7 +187,7 @@ local CONFIG = {
         MINIMUM_MAX_MP = 10,
         MAXIMUM_MAX_MP = 200,
         MINIMUM_LENGTH = 20,
-        MAXIMUM_LENGTH = 384,
+        MAXIMUM_LENGTH = 396,
 
         HEIGHT = 7,
         BORDER = 1,
@@ -220,7 +220,7 @@ local CONFIG = {
             ENABLE = true,
             TEXT = "MP",
             -- Revised independent label placement.
-            X = 472,
+            X = 482,
             Y = 337,
             COLOR = 0x80E41853,
             FONT_SIZE = 8,
@@ -277,7 +277,7 @@ local CONFIG = {
         ENABLE = true,
         TEXT = "LIMIT",
         X = 473,
-        Y = 399,
+        Y = 402,
         COLOR = 0x800000FF,
         FONT_SIZE = 13,
     },
