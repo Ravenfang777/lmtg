@@ -1,9 +1,9 @@
-LUAGUI_NAME = "KH1FM Smooth Circular HP + Custom MP + LIMIT HUD v1.4"
+LUAGUI_NAME = "KH1FM Smooth Circular HP + Custom MP + LIMIT HUD v1.5"
 LUAGUI_AUTH = "OpenAI"
-LUAGUI_DESC = "Smooth circular HP gauge, Max-MP-scaled custom bar, and exact pulsing five-slot LIMIT gauge."
+LUAGUI_DESC = "Flicker-safe smooth circular HP gauge, Max-MP-scaled custom bar, and exact pulsing five-slot LIMIT gauge."
 
 --[[
-    KH1FM SMOOTH CIRCULAR HP + CUSTOM MP + LIMIT HUD v1.4
+    KH1FM SMOOTH CIRCULAR HP + CUSTOM MP + LIMIT HUD v1.5
     Target: KINGDOM HEARTS FINAL MIX.exe, Steam Global 1.0.0.2
     SHA-256: d790746245d26159f3ee0e1060e33b2fa2de06941850a4ac724f598722884bac
     Runtime: LuaBackendHook v1.9.1-hook / LuaEngine v5.0
@@ -47,6 +47,9 @@ LUAGUI_DESC = "Smooth circular HP gauge, Max-MP-scaled custom bar, and exact pul
         together to white and back. Pulse enable, speed, steps, independent
         outline/text endpoint colors, and text inclusion are editable without
         changing LIMIT mechanics.
+      * Publishes pulse-color refreshes without setting the shared rectangle
+        count to zero. HP, MP, and LIMIT therefore remain continuously visible
+        while the full-LIMIT outline and text change color.
       * Reads current and maximum MP directly from Sora's live stat page every
         frame, using the same pointer resolution as MP Haste/Rage v6. This has
         no combat gate, so the custom MP bar updates during exploration too.
@@ -63,9 +66,9 @@ LUAGUI_DESC = "Smooth circular HP gauge, Max-MP-scaled custom bar, and exact pul
         100       = slots 1-5 filled
 
     COMPATIBILITY
-      * Replaces Curved HP HUD v1.3, Custom MP Bar + LIMIT Gauge
-        v1/v1.1/v1.2, and LIMIT Gauge v2.2; do not enable any of those older
-        scripts at the same time.
+      * Replaces this HUD's v1.4 and every earlier Curved HP HUD, Custom MP Bar
+        + LIMIT Gauge, or standalone LIMIT Gauge version; do not enable any of
+        those older scripts at the same time.
       * Provides the two pass-through signatures required by Enemy HP HUD v4.1.
       * Owns module+0x3AF300..0x3AF700, module+0x3AFE00..0x3AFE40,
         one 0x4000-byte aligned geometry allocation, the proven post-loop
@@ -75,9 +78,10 @@ LUAGUI_DESC = "Smooth circular HP gauge, Max-MP-scaled custom bar, and exact pul
       * Does not touch EnemyConfig, MP Haste/Rage, equipment bonuses, damage,
         animation, movement, BGM, or enemy data.
 
-    Disable Curved HP HUD v1.3, Custom MP Bar + LIMIT Gauge v1/v1.1/v1.2,
-    LIMIT Gauge v2.2, and every older Numeric, Graphic, and Texture Sora HUD
-    before using this file. Fully restart KH1FM; do not switch to it with F1.
+    Disable v1.4, Curved HP HUD v1.3, Custom MP Bar + LIMIT Gauge
+    v1/v1.1/v1.2, LIMIT Gauge v2.2, and every older Numeric, Graphic, and
+    Texture Sora HUD before using this file. Fully restart KH1FM; do not
+    switch to it with F1.
 ]]
 
 -- =========================================================================
@@ -91,7 +95,7 @@ local CONFIG = {
     -- Custom HP path. Coordinates use KH1's native 640x448 HUD space.
     HP = {
         CENTER_X = 257,
-        CENTER_Y = 130,
+        CENTER_Y = 99,
         SCALE = 1.00,
 
         -- The supplied references establish this capacity model exactly:
@@ -276,7 +280,7 @@ local CONFIG = {
 -- VERIFIED BUILD CONSTANTS -- DO NOT EDIT
 -- =========================================================================
 
-local PREFIX = "[SmoothCircularHpMpLimitV1.4] "
+local PREFIX = "[SmoothCircularHpMpLimitV1.5] "
 
 local VERSION_SENTINEL_RVA = 0x3B2271
 local VERSION_VALUE = 0x7265737563697065
@@ -1499,11 +1503,17 @@ local function publishRectangles(rectangles, limitLabelColor)
 
     local ok
     local writeReason
-    ok, writeReason =
-        safeWriteArrayAbsolute(pointer, { 0, 0, 0, 0 })
-    if not ok then
-        return false, "could not suspend traversal: " .. tostring(writeReason)
-    end
+
+    -- FLICKER-SAFE PUBLICATION
+    --
+    -- v1.4 temporarily wrote a zero rectangle count before every refresh.
+    -- At full LIMIT the pulse changes color repeatedly, so the render thread
+    -- could observe that zero between LuaBackendHook memory writes and hide
+    -- HP, MP, and LIMIT together for one presented frame.
+    --
+    -- Keep the previous valid count live while the next labels and records
+    -- are copied. The new count is committed last. The first publication is
+    -- also safe because the allocator initializes the header to zero.
     ok, writeReason =
         safeWriteArray(AUX_RVA, auxiliaryBytes(limitLabelColor))
     if not ok then
@@ -2422,6 +2432,7 @@ function _OnFrame()
         log("FULL LIMIT: outline and LIMIT text pulse together every "
             .. tostring(CONFIG.FULL_PULSE.CYCLE_SECONDS)
             .. " seconds; speed and colors are adjustable; mechanics are unchanged.")
+        log("FLICKER-SAFE PUBLISHER: HP, MP, and LIMIT remain active during pulse-color refreshes.")
     end
 
     local updateOk, updateReason = updateGauge()

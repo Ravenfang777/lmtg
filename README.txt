@@ -1,19 +1,27 @@
-KH1FM SMOOTH CIRCULAR HP + CUSTOM MP + PULSING LIMIT HUD v1.4
+KH1FM SMOOTH CIRCULAR HP + CUSTOM MP + PULSING LIMIT HUD v1.5
 
 INSTALLATION
-1. Disable Curved HP HUD v1.3.
-2. Disable Custom MP Bar + LIMIT Gauge v1/v1.1/v1.2.
-3. Disable standalone LIMIT Gauge v2.2.
-4. Disable every older Numeric, Graphic, Texture Sora HUD, and Resource Probe.
-5. Keep LIMIT System v1.6 enabled.
-6. Install this ZIP through OpenKH Mod Manager.
-7. Completely close KH1FM, then use Build and Run. Do not switch HUD scripts
+1. Disable Smooth Circular HP + Custom MP + Pulsing LIMIT HUD v1.4.
+2. Disable Curved HP HUD v1.3.
+3. Disable Custom MP Bar + LIMIT Gauge v1/v1.1/v1.2.
+4. Disable standalone LIMIT Gauge v2.2.
+5. Disable every older Numeric, Graphic, Texture Sora HUD, and Resource Probe.
+6. Keep LIMIT System v1.6 enabled.
+7. Install this ZIP through OpenKH Mod Manager.
+8. Completely close KH1FM, then use Build and Run. Do not switch HUD scripts
    with F1.
 
 EXPECTED CONSOLE PREFIX
-[SmoothCircularHpMpLimitV1.4]
+[SmoothCircularHpMpLimitV1.5]
 
-WHAT v1.4 CHANGES
+WHAT v1.5 FIXES
+- Full-LIMIT pulse refreshes no longer set the shared rectangle count to zero.
+- HP, MP, and LIMIT remain continuously visible while the outline and LIMIT
+  text change color.
+- The renderer commits each refreshed record set before publishing its count.
+- Every v1.4 visual setting and gameplay behavior is preserved.
+
+RETAINED v1.4 DESIGN
 - Preserves Sora's native -a3290.dds face image.
 - Removes the native HP outline, capacity, fill, circular backing, and HP label.
 - Removes the native MP outline, fill, charge strip, capacity caps, layer, and
@@ -54,7 +62,7 @@ REVISED SETTINGS PRESERVED FROM THE ATTACHED v1.3 LUA
 
 EASY HP SETTINGS
 Open:
-scripts/ZZZ_KH1FM_Smooth_Circular_HP_Custom_MP_LIMIT_HUD_v1_4.lua
+scripts/ZZZ_KH1FM_Smooth_Circular_HP_Custom_MP_LIMIT_HUD_v1_5.lua
 
 Edit CONFIG.HP near the top:
 
@@ -94,3 +102,5 @@ COMPATIBILITY
 - It keeps LIMIT System v1.6's module+0x3AFE40..0x3B0000 region free.
 - One 0x4000-byte aligned geometry buffer is allocated once after the player
   HUD loads; there is no per-frame allocation.
+- Pulse updates keep the previous valid rectangle list active until the new
+  list has been copied, preventing whole-HUD disappearance between writes.
