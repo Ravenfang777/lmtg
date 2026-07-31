@@ -113,8 +113,8 @@ local CONFIG = {
         -- one value to resize the circular path without making it elliptical.
         CURVE_RADIUS = 30.00,
 
-        -- At 250 HP the lower endpoint reaches X=3 in the supplied reference.
-        MAXIMUM_HP = 250,
+        -- At 255 HP the lower endpoint reaches X=3 in the supplied reference.
+        MAXIMUM_HP = 255,
         STRAIGHT_MAX_LENGTH = 354,
 
         -- Layer sizes build the black outline and the inward-facing gradients.
