@@ -213,9 +213,9 @@ local CONFIG = {
         -- Revised capacity interpolation endpoints supplied for this variant.
         -- Max MP 10  -> outer width 10
         -- Max MP 200 -> outer width 200
-        MINIMUM_MAX_MP = 1,
+        MINIMUM_MAX_MP = 5,
         MAXIMUM_MAX_MP = 200,
-        MINIMUM_LENGTH = 2,
+        MINIMUM_LENGTH = 10,
         MAXIMUM_LENGTH = 400,
 
         HEIGHT = 7,
