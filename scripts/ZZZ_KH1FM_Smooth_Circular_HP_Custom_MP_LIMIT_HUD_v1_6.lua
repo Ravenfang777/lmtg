@@ -101,7 +101,7 @@ local CONFIG = {
 
     -- Custom HP path. Coordinates use KH1's native 640x448 HUD space.
     HP = {
-        CENTER_X = 255,
+        CENTER_X = 256,
         CENTER_Y = 122,
         SCALE = 1.20,
 
@@ -113,9 +113,9 @@ local CONFIG = {
         -- one value to resize the circular path without making it elliptical.
         CURVE_RADIUS = 30.00,
 
-        -- At 255 HP the lower endpoint reaches X=3 in the supplied reference.
-        MAXIMUM_HP = 255,
-        STRAIGHT_MAX_LENGTH = 354,
+        -- At 250 HP the lower endpoint reaches X=3 in the supplied reference.
+        MAXIMUM_HP = 250,
+        STRAIGHT_MAX_LENGTH = 250,
 
         -- Layer sizes build the black outline and the inward-facing gradients.
         OUTLINE_SIZE = 14,
@@ -185,9 +185,9 @@ local CONFIG = {
         -- Max MP 10  -> outer width 10
         -- Max MP 200 -> outer width 200
         MINIMUM_MAX_MP = 10,
-        MAXIMUM_MAX_MP = 200,
+        MAXIMUM_MAX_MP = 250,
         MINIMUM_LENGTH = 10,
-        MAXIMUM_LENGTH = 200,
+        MAXIMUM_LENGTH = 250,
 
         HEIGHT = 7,
         BORDER = 1,
