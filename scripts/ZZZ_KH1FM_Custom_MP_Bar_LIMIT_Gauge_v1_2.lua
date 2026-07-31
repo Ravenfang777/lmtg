@@ -81,8 +81,8 @@ local CONFIG = {
         SCALE = 1.00,
 
         -- Capacity interpolation endpoints. Defaults match the references:
-        -- Max MP 10  -> outer width 7  (X=203..209)
-        -- Max MP 255 -> outer width 179 (X=31..209)
+        -- Max MP 10  -> outer width
+        -- Max MP 255 -> outer width
         MINIMUM_MAX_MP = 10,
         MAXIMUM_MAX_MP = 255,
         MINIMUM_LENGTH = 10,
