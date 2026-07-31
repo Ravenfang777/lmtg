@@ -187,7 +187,7 @@ local CONFIG = {
         MINIMUM_MAX_MP = 10,
         MAXIMUM_MAX_MP = 200,
         MINIMUM_LENGTH = 20,
-        MAXIMUM_LENGTH = 380,
+        MAXIMUM_LENGTH = 384,
 
         HEIGHT = 7,
         BORDER = 1,
