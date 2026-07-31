@@ -220,7 +220,7 @@ local CONFIG = {
             ENABLE = true,
             TEXT = "MP",
             -- Revised independent label placement.
-            X = 480,
+            X = 680,
             Y = 333,
             COLOR = 0x80E41853,
             FONT_SIZE = 8,
