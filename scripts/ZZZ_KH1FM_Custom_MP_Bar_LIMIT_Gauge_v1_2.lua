@@ -200,9 +200,9 @@ local CONFIG = {
         CYCLE_SECONDS = 1.00,
         COLOR_STEPS = 30,
         OUTLINE_START_COLOR = 0x80FFEE00, -- RGB 0,238,255
-        OUTLINE_PEAK_COLOR = 0x802A14E2,  -- RGB 226,20,42
+        OUTLINE_PEAK_COLOR = 0x800000B5,  -- RGB 181,0,0
         TEXT_START_COLOR = 0x80FFEE00,    -- RGB 0,238,255
-        TEXT_PEAK_COLOR = 0x802A14E2,     -- RGB 226,20,42
+        TEXT_PEAK_COLOR = 0x800000B5,     -- RGB 181,0,0
     },
 
     -- Kept as a named setting so all threshold logic stays explicit.
