@@ -77,7 +77,7 @@ local CONFIG = {
         -- RIGHT_X is the fixed exclusive right edge. Capacity growth extends
         -- left from this point, matching all four supplied references.
         RIGHT_X = 207,
-        Y = 148,
+        Y = 150,
         SCALE = 1.00,
 
         -- Capacity interpolation endpoints. Defaults match the references:
@@ -134,7 +134,7 @@ local CONFIG = {
     -- Exact base placement from the three supplied 640x448 references.
     ORIGIN = {
         X = 82,
-        Y = 116,
+        Y = 118,
         SCALE = 0.50,
     },
 
@@ -175,8 +175,8 @@ local CONFIG = {
     LIMIT_LABEL = {
         ENABLE = true,
         TEXT = "LIMIT",
-        X = 180,
-        Y = 244,
+        X = 440,
+        Y = 308,
         COLOR = 0x800000FF,
         FONT_SIZE = 10,
     },
@@ -186,7 +186,7 @@ local CONFIG = {
         -- These are the exact RGB values sampled from the references.
         FILLED_EDGE = 0x800000B5,    -- RGB 181,0,0
         FILLED_CENTER = 0x802A14E2,  -- RGB 226,20,42
-        EMPTY_OUTLINE = 0x804A4A4A,
+        EMPTY_OUTLINE = 0x80000000,
         EMPTY_EDGE = 0x80272727,
         EMPTY_CENTER = 0x80555555,
         BLACK_BACK = 0x80000000,
@@ -200,7 +200,7 @@ local CONFIG = {
         CYCLE_SECONDS = 1.00,
         COLOR_STEPS = 30,
         OUTLINE_START_COLOR = 0x80FFEE00, -- RGB 0,238,255
-        OUTLINE_PEAK_COLOR = 0x80000034,  -- RGB 94,0,0
+        OUTLINE_PEAK_COLOR = 0x80000000,  -- RGB 0,0,0
         TEXT_START_COLOR = 0x80FFEE00,    -- RGB 0,238,255
         TEXT_PEAK_COLOR = 0x802A14E2,     -- RGB 226,20,42
     },
