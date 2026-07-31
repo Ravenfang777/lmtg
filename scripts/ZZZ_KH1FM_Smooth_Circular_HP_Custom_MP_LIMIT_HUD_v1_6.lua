@@ -139,7 +139,7 @@ local CONFIG = {
             ENABLE = true,
             TEXT = "HP",
             X = 467,
-            Y = 320,
+            Y = 316,
             COLOR = 0x8008D5AC,
             FONT_SIZE = 10,
         },
