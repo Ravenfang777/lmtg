@@ -88,7 +88,7 @@ local CONFIG = {
         MINIMUM_LENGTH = 10,
         MAXIMUM_LENGTH = 255,
 
-        HEIGHT = 7,
+        HEIGHT = 6,
         BORDER = 1,
 
         -- Direction in which purple MP disappears as current MP is spent:
