@@ -161,14 +161,14 @@ local CONFIG = {
         },
         {
             ENABLE = true,
-            X = 134, Y = 134,
-            WIDTH = 36, HEIGHT = 8,
+            X = 126, Y = 134,
+            WIDTH = 36, HEIGHT = 7,
             COLOR = 0x80000000,
         },
         {
             ENABLE = true,
-            X = 208, Y = 123,
-            WIDTH = 12, HEIGHT = 10,
+            X = 228, Y = 123,
+            WIDTH = 15, HEIGHT = 10,
             COLOR = 0x80000000,
         },
     },
