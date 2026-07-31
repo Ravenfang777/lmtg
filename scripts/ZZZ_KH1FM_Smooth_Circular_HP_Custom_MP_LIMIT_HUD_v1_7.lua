@@ -192,8 +192,8 @@ local CONFIG = {
             -- moves along the HP path direction; NORMAL_OFFSET moves across
             -- the path. X/Y offsets are fixed screen-space corrections.
             ALONG_OFFSET = 0,
-            NORMAL_OFFSET = 2,
-            X_OFFSET = -2,
+            NORMAL_OFFSET = 0,
+            X_OFFSET = 0,
             Y_OFFSET = 0,
 
             -- The box automatically follows the HP tangent. This value adds
