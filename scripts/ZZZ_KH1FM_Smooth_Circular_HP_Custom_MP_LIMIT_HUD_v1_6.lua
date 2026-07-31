@@ -235,7 +235,7 @@ local CONFIG = {
     -- Revised LIMIT placement supplied for this variant.
     ORIGIN = {
         X = 75,
-        Y = 114,
+        Y = 110,
         SCALE = 0.54,
     },
 
@@ -277,9 +277,9 @@ local CONFIG = {
         ENABLE = true,
         TEXT = "LIMIT",
         X = 503,
-        Y = 419,
+        Y = 405,
         COLOR = 0x800000FF,
-        FONT_SIZE = 12,
+        FONT_SIZE = 13,
     },
 
     COLORS = {
