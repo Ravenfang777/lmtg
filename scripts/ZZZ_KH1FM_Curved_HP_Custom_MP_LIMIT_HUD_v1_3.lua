@@ -85,8 +85,8 @@ local CONFIG = {
 
     -- Custom HP path. Coordinates use KH1's native 640x448 HUD space.
     HP = {
-        CENTER_X = 357,
-        CENTER_Y = 39,
+        CENTER_X = 257,
+        CENTER_Y = 99,
         SCALE = 1.00,
 
         -- The supplied references establish this capacity model exactly:
