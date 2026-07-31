@@ -133,8 +133,8 @@ local CONFIG = {
 
     -- Exact base placement from the three supplied 640x448 references.
     ORIGIN = {
-        X = 0,
-        Y = 0,
+        X = 208,
+        Y = 149,
         SCALE = 0.50,
     },
 
