@@ -103,7 +103,7 @@ local CONFIG = {
     HP = {
         CENTER_X = 257,
         CENTER_Y = 125,
-        SCALE = 1.10,
+        SCALE = 1.20,
 
         -- The supplied references establish this capacity model exactly:
         -- 25 HP = 90 degrees, 50 HP = 180 degrees, 75 HP = 270 degrees.
@@ -131,7 +131,7 @@ local CONFIG = {
         EMPTY_MIDDLE_COLOR = 0x803E3E3E,-- RGB 62,62,62
         EMPTY_INNER_COLOR = 0x80484848, -- RGB 72,72,72
         FILL_OUTER_COLOR = 0x802EA028,  -- RGB 40,160,46
-        FILL_MIDDLE_COLOR = 0x801EB660, -- RGB 96,182,30
+        FILL_MIDDLE_COLOR = 0x8008D5AC, -- RGB 96,182,30
         FILL_INNER_COLOR = 0x8008D5AC,  -- RGB 172,213,8
 
         -- Independent native-font label. Position/color/size are adjustable.
