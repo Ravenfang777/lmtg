@@ -133,8 +133,8 @@ local CONFIG = {
 
     -- Exact base placement from the three supplied 640x448 references.
     ORIGIN = {
-        X = 138,
-        Y = 119,
+        X = 118,
+        Y = 117,
         SCALE = 0.50,
     },
 
@@ -202,7 +202,7 @@ local CONFIG = {
         OUTLINE_START_COLOR = 0x80FFEE00, -- RGB 0,238,255
         OUTLINE_PEAK_COLOR = 0x80000034,  -- RGB 94,0,0
         TEXT_START_COLOR = 0x80FFEE00,    -- RGB 0,238,255
-        TEXT_PEAK_COLOR = 0x8000005E,     -- RGB 94,0,0
+        TEXT_PEAK_COLOR = 0x802A14E2,     -- RGB 226,20,42
     },
 
     -- Kept as a named setting so all threshold logic stays explicit.
