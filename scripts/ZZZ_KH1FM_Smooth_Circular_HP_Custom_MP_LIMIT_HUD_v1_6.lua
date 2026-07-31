@@ -115,7 +115,7 @@ local CONFIG = {
 
         -- At 250 HP the lower endpoint reaches X=3 in the supplied reference.
         MAXIMUM_HP = 250,
-        STRAIGHT_MAX_LENGTH = 250,
+        STRAIGHT_MAX_LENGTH = 354,
 
         -- Layer sizes build the black outline and the inward-facing gradients.
         OUTLINE_SIZE = 14,
