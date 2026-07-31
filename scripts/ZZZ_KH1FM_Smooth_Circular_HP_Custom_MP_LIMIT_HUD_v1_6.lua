@@ -277,7 +277,7 @@ local CONFIG = {
         ENABLE = true,
         TEXT = "LIMIT",
         X = 473,
-        Y = 409,
+        Y = 399,
         COLOR = 0x800000FF,
         FONT_SIZE = 13,
     },
