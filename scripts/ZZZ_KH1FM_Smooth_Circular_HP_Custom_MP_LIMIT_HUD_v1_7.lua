@@ -161,7 +161,7 @@ local CONFIG = {
         {
             ENABLE = true,
             X = 222, Y = 142,
-            WIDTH = 16, HEIGHT = 10,
+            WIDTH = 16, HEIGHT = 8,
             COLOR = 0x80000000,
         },
         {
