@@ -178,14 +178,14 @@ local CONFIG = {
         },
         {
             ENABLE = true,
-            X = 216, Y = 125,
-            WIDTH = 16, HEIGHT = 8,
+            X = 216, Y = 123,
+            WIDTH = 10, HEIGHT = 8,
             COLOR = 0x80000000,
         },
         {
             ENABLE = true,
             FOLLOW_HP_MAXIMUM = true,
-            WIDTH = 3, HEIGHT = 18,
+            WIDTH = 4, HEIGHT = 18,
             COLOR = 0x80000000,
 
             -- Fine adjustment in native 640x448 HUD pixels. ALONG_OFFSET
