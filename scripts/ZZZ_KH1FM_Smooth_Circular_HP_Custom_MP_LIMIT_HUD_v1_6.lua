@@ -220,7 +220,7 @@ local CONFIG = {
             ENABLE = true,
             TEXT = "MP",
             -- Revised independent label placement.
-            X = 482,
+            X = 480,
             Y = 333,
             COLOR = 0x80E41853,
             FONT_SIZE = 8,
@@ -234,7 +234,7 @@ local CONFIG = {
 
     -- Revised LIMIT placement supplied for this variant.
     ORIGIN = {
-        X = 138,
+        X = 136,
         Y = 123,
         SCALE = 0.30,
     },
@@ -276,7 +276,7 @@ local CONFIG = {
     LIMIT_LABEL = {
         ENABLE = true,
         TEXT = "LIMIT",
-        X = 50,
+        X = 450,
         Y = 700,
         COLOR = 0x800000FF,
         FONT_SIZE = 26,
