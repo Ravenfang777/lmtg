@@ -1,14 +1,24 @@
-LUAGUI_NAME = "KH1FM Custom MP Bar + LIMIT Gauge v1.2"
+LUAGUI_NAME = "KH1FM Curved HP + Custom MP + LIMIT HUD v1.3"
 LUAGUI_AUTH = "OpenAI"
-LUAGUI_DESC = "Max-MP-scaled custom bar plus exact five-slot LIMIT gauge with synchronized outline/text pulsing."
+LUAGUI_DESC = "Continuous curved HP gauge, Max-MP-scaled custom bar, and exact pulsing five-slot LIMIT gauge."
 
 --[[
-    KH1FM CUSTOM MP BAR + LIMIT GAUGE v1.2
+    KH1FM CURVED HP + CUSTOM MP + LIMIT HUD v1.3
     Target: KINGDOM HEARTS FINAL MIX.exe, Steam Global 1.0.0.2
     SHA-256: d790746245d26159f3ee0e1060e33b2fa2de06941850a4ac724f598722884bac
     Runtime: LuaBackendHook v1.9.1-hook / LuaEngine v5.0
 
     PURPOSE
+      * Removes Sora's complete native HP gauge, HP capacity/outline, HP fill,
+        native circular backing, and native HP label while preserving the
+        -a3290.dds Sora face image.
+      * Draws a black-outlined gray/green HP path matching the supplied 25,
+        37, 50, 75, and 255 maximum-HP references.
+      * 1..75 maximum HP grows continuously around a 270-degree curve.
+        76..255 maximum HP extends continuously left from the curve's lower
+        endpoint. Current HP fills that exact same path point-for-point.
+      * The curve advances once per integer HP point and the straight section
+        interpolates to the exact 255-HP reference length.
       * Removes Sora's native MP gauge, MP Charge strip, MP capacity packets,
         and native MP label.
       * Draws a separate proportional MP bar based on the supplied 10-MP and
@@ -24,7 +34,7 @@ LUAGUI_DESC = "Max-MP-scaled custom bar plus exact five-slot LIMIT gauge with sy
       * Position, scale, minimum/maximum length, height, colors, depletion
         direction, label text, label position, label color, and font size are
         editable in CONFIG.MP.
-      * Keeps Sora's native portrait and main HP gauge.
+      * Keeps only Sora's native face image from the original player HUD.
       * Retains the five 20-point LIMIT thresholds and reconstructs the new
         supplied 0, 80, and 100 references exactly.
       * At 20..80, filled slots are red inside the normal gray/black backs.
@@ -49,18 +59,19 @@ LUAGUI_DESC = "Max-MP-scaled custom bar plus exact five-slot LIMIT gauge with sy
         100       = slots 1-5 filled
 
     COMPATIBILITY
-      * Replaces Custom MP Bar + LIMIT Gauge v1/v1.1 and LIMIT Gauge v2.2; do
-        not enable any of those older scripts at the same time.
+      * Replaces Custom MP Bar + LIMIT Gauge v1/v1.1/v1.2 and LIMIT Gauge
+        v2.2; do not enable any of those older scripts at the same time.
       * Provides the two pass-through signatures required by Enemy HP HUD v4.1.
       * Owns module+0x3AF300..0x3AF700, module+0x3AFE00..0x3AFE40,
-        the proven post-loop hook, and MP-only suppression sites.
+        one 0x4000-byte aligned geometry allocation, the proven post-loop
+        hook, and HP/MP-only suppression sites.
       * Leaves Enemy HP HUD v4.1's module+0x3AF700..0x3AFE00 region untouched.
       * Leaves LIMIT v1.6's module+0x3AFE40..0x3B0000 region untouched.
       * Does not touch EnemyConfig, MP Haste/Rage, equipment bonuses, damage,
         animation, movement, BGM, or enemy data.
 
-    Disable Custom MP Bar + LIMIT Gauge v1/v1.1, LIMIT Gauge v2.2, and every
-    older Numeric, Graphic, and Texture Sora HUD before using this file.
+    Disable Custom MP Bar + LIMIT Gauge v1/v1.1/v1.2, LIMIT Gauge v2.2, and
+    every older Numeric, Graphic, and Texture Sora HUD before using this file.
     Fully restart KH1FM; do not switch to it with F1.
 ]]
 
@@ -72,6 +83,45 @@ local CONFIG = {
     ENABLE = true,
     LOG_VALUE_CHANGES = false,
 
+    -- Custom HP path. Coordinates use KH1's native 640x448 HUD space.
+    HP = {
+        CENTER_X = 357,
+        CENTER_Y = 39,
+        SCALE = 1.00,
+
+        -- The supplied references establish this capacity model exactly:
+        -- 25 HP = 90 degrees, 50 HP = 180 degrees, 75 HP = 270 degrees.
+        CURVE_HP = 75,
+        CURVE_SWEEP_DEGREES = 270,
+        CURVE_RADIUS_X = 30.50,
+        CURVE_RADIUS_Y = 29.00,
+
+        -- At 255 HP the lower endpoint reaches X=3 in the supplied reference.
+        MAXIMUM_HP = 255,
+        STRAIGHT_MAX_LENGTH = 354,
+
+        -- Layer sizes build the black outline and the inward-facing gradients.
+        OUTLINE_SIZE = 14,
+        INTERIOR_SIZE = 10,
+        MIDDLE_SIZE = 7,
+        INNER_SIZE = 4,
+        MIDDLE_INSET = 1.75,
+        INNER_INSET = 3.50,
+
+        -- KH1 HUD colors use AABBGGRR; 0x80 is full native opacity.
+        OUTLINE_COLOR = 0x80000000,
+        EMPTY_OUTER_COLOR = 0x802D2D2D, -- RGB 45,45,45
+        EMPTY_MIDDLE_COLOR = 0x803E3E3E,-- RGB 62,62,62
+        EMPTY_INNER_COLOR = 0x80484848, -- RGB 72,72,72
+        FILL_OUTER_COLOR = 0x802EA028,  -- RGB 40,160,46
+        FILL_MIDDLE_COLOR = 0x801EB660, -- RGB 96,182,30
+        FILL_INNER_COLOR = 0x8008D5AC,  -- RGB 172,213,8
+
+        -- Visual-only test. -1 uses live HP.
+        PREVIEW_CURRENT = -1,
+        PREVIEW_MAXIMUM = 255,
+    },
+
     -- Custom MP bar. Coordinates use KH1's native 640x448 HUD space.
     MP = {
         -- RIGHT_X is the fixed exclusive right edge. Capacity growth extends
@@ -81,8 +131,8 @@ local CONFIG = {
         SCALE = 1.00,
 
         -- Capacity interpolation endpoints. Defaults match the references:
-        -- Max MP 10  -> outer width
-        -- Max MP 255 -> outer width
+        -- Max MP 10  -> outer width 7  (X=203..209)
+        -- Max MP 255 -> outer width 179 (X=31..209)
         MINIMUM_MAX_MP = 10,
         MAXIMUM_MAX_MP = 255,
         MINIMUM_LENGTH = 10,
@@ -197,7 +247,7 @@ local CONFIG = {
     FULL_PULSE = {
         ENABLE = true,
         INCLUDE_LIMIT_TEXT = true,
-        CYCLE_SECONDS = 1.00,
+        CYCLE_SECONDS = 3.00,
         COLOR_STEPS = 30,
         OUTLINE_START_COLOR = 0x80FFEE00, -- RGB 0,238,255
         OUTLINE_PEAK_COLOR = 0x80000000,  -- RGB 0,0,0
@@ -220,7 +270,7 @@ local CONFIG = {
 -- VERIFIED BUILD CONSTANTS -- DO NOT EDIT
 -- =========================================================================
 
-local PREFIX = "[CustomMpLimitV1.2] "
+local PREFIX = "[CurvedHpMpLimitV1.3] "
 
 local VERSION_SENTINEL_RVA = 0x3B2271
 local VERSION_VALUE = 0x7265737563697065
@@ -230,6 +280,8 @@ local LIMIT_INTERFACE_SENTINEL_RVA = 0x3AFFC8
 local LIMIT_INTERFACE_SENTINEL = 0x4C494D36
 
 local SORA_BASE_RVA = 0x2DE9364
+local CURRENT_HP_OFFSET = 0x01
+local MAX_HP_OFFSET = 0x02
 local CURRENT_MP_OFFSET = 0x03
 local MAX_MP_OFFSET = 0x04
 
@@ -238,8 +290,17 @@ local SORA_POINTER_RVA = 0x2537E48
 local POINTER_BANK_TABLE_RVA = 0x2EE3980
 local SORA_STAT_PAGE_OFFSET = 0x6C
 local STAT_CURRENT_HP_OFFSET = 0x3C
+local STAT_MAXIMUM_HP_OFFSET = 0x40
 local STAT_CURRENT_MP_OFFSET = 0x44
 local STAT_MAXIMUM_MP_OFFSET = 0x48
+
+local HP_GAUGE_BYPASS_RVA = 0x2698E8
+local HP_GAUGE_ORIGINAL = {
+    0x66, 0x0F, 0x6F, 0x05, 0xE0, 0x61, 0x1C, 0x00,
+}
+local HP_GAUGE_CUSTOM = {
+    0x48, 0x8B, 0xC6, 0xE9, 0x40, 0x06, 0x00, 0x00,
+}
 
 local MP_GAUGE_BYPASS_RVA = 0x269F61
 local MP_GAUGE_ORIGINAL = {
@@ -254,6 +315,14 @@ local MP_FILL_ORIGINAL = {
     0xE8, 0x33, 0xF6, 0xFF, 0xFF,
 }
 local MP_FILL_CUSTOM = {
+    0x48, 0x8B, 0xC2, 0x90, 0x90,
+}
+
+local HP_FILL_CALL_RVA = 0x26D0C3
+local HP_FILL_ORIGINAL = {
+    0xE8, 0x28, 0xEC, 0xFF, 0xFF,
+}
+local HP_FILL_CUSTOM = {
     0x48, 0x8B, 0xC2, 0x90, 0x90,
 }
 
@@ -275,8 +344,9 @@ local CAPACITY_EXTENSION_CUSTOM = {
     0x48, 0x8B, 0xC2, 0x90, 0x90,
 }
 
--- Sora base-sprite entry 1 is the remaining native MP layer and entry 5 is
--- the native MP label. All other Sora and non-Sora base sprites pass through.
+-- Sora draw-order entry 3 is the -a3290.dds face atlas. The cave filter
+-- preserves only that entry for Sora HUD type 0 and passes every non-Sora
+-- sprite through to the native emitter.
 local BASE_SPRITE_CALL_RVA = 0x269332
 local BASE_SPRITE_ORIGINAL = {
     0xE8, 0x59, 0x3B, 0x00, 0x00,
@@ -321,57 +391,109 @@ local PLAYER_HUD_SIGNATURE = {
     0xEC, 0x60, 0x48, 0x8D, 0x05, 0xBF, 0xBF, 0xC7,
 }
 
+local ALIGNED_MALLOC_IAT_RVA = 0x3B0778
+local ALIGNED_MALLOC_CALL_RVA = 0x0D582D
+
 local CAVE_RVA = 0x3AF300
-local CODE_SIZE = 0x100
-local DATA_RVA = 0x3AF400
-local DATA_SIZE = 0x300
+local CODE_SIZE = 0x400
+local IMMUTABLE_CODE_SIZE = 0x3F0
+local DATA_POINTER_RVA = CAVE_RVA + 0x3F0
+local CAVE_SENTINEL_RVA = CAVE_RVA + 0x3F8
+local CAVE_SENTINEL = 0x4D504843
+local HEAP_DATA_SIZE = 0x4000
 local AUX_RVA = 0x3AFE00
 local AUX_SIZE = 0x40
 local DATA_SENTINEL = 0x31504D43
 local AUX_SENTINEL = 0x31585541
 local RECTANGLE_RECORDS_OFFSET = 0x08
 local RECTANGLE_RECORD_SIZE = 0x18
-local MAX_RECTANGLES = 31
+local MAX_RECTANGLES =
+    math.floor((HEAP_DATA_SIZE - RECTANGLE_RECORDS_OFFSET)
+        / RECTANGLE_RECORD_SIZE)
 local EXACT_LIMIT_RECTANGLE_COUNT = 22
 local EXACT_MP_RECTANGLE_COUNT = 9
 local LABEL_RECORD_SIZE = 0x20
-local CAPTURE_CURRENT_MP_RVA = CAVE_RVA + 0x78
-local CAPTURE_MAXIMUM_MP_RVA = CAVE_RVA + 0x7C
 
 -- Assembled for module+0x3AF300. It contains:
---   +0x000 equipment-adjusted live MP capture + player-HUD pass-through
---   +0x048 Sora-only native MP layer/label filter
---   +0x078 captured current/max MP dwords
+--   +0x000 player-HUD pass-through and one-time allocator call
+--   +0x048 Sora face-only base-sprite filter
 --   +0x080 minimal final-render pass-through
---   +0x088 post-loop LIMIT/MP rectangle traversal and two-label loop
+--   +0x088 post-loop HP/LIMIT/MP rectangle traversal and two-label loop
+--   +0x180 verified aligned-allocator helper
+--   +0x3F0 heap pointer
+--   +0x3F8 cave sentinel
 local CAVE_CODE = {
     0x53, 0x48, 0x83, 0xEC, 0x20, 0x48, 0x89, 0xCB, 0x48, 0x8B, 0x41, 0x08, 0x48, 0x85, 0xC0, 0x74,
-    0x23, 0x8B, 0x48, 0x6C, 0x85, 0xC9, 0x74, 0x1C, 0xE8, 0xA3, 0xBA, 0xFD, 0xFF, 0x48, 0x85, 0xC0,
-    0x74, 0x12, 0x8B, 0x48, 0x44, 0x89, 0x0D, 0x4D, 0x00, 0x00, 0x00, 0x8B, 0x48, 0x48, 0x89, 0x0D,
-    0x48, 0x00, 0x00, 0x00, 0x48, 0x89, 0xD9, 0xE8, 0x54, 0xDC, 0xEB, 0xFF, 0x48, 0x83, 0xC4, 0x20,
-    0x5B, 0xC3, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x83, 0x3E, 0x00, 0x75, 0x0C, 0x48, 0x83, 0xFB,
-    0x01, 0x74, 0x0B, 0x48, 0x83, 0xFB, 0x05, 0x74, 0x05, 0xE9, 0x32, 0xDB, 0xEB, 0xFF, 0x4C, 0x89,
-    0xF0, 0xC3, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x05, 0xE8, 0x6A, 0x01, 0x00, 0x00, 0x48, 0x89, 0xD9, 0xE8, 0x72, 0xDC, 0xEB, 0xFF, 0x48, 0x83,
+    0xC4, 0x20, 0x5B, 0xC3, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0xE9, 0xEB, 0x00, 0xED, 0xFF, 0x00, 0x00, 0x00, 0x53, 0x56, 0x48, 0x83, 0xEC, 0x30, 0x8B, 0x1D,
-    0x6C, 0x00, 0x00, 0x00, 0x85, 0xDB, 0x74, 0x1E, 0x48, 0x8D, 0x35, 0x69, 0x00, 0x00, 0x00, 0x8B,
-    0x0E, 0x48, 0x8B, 0x56, 0x08, 0x4C, 0x8B, 0x46, 0x10, 0xE8, 0xE2, 0x72, 0xD9, 0xFF, 0x48, 0x83,
-    0xC6, 0x18, 0xFF, 0xCB, 0x75, 0xE9, 0xBB, 0x02, 0x00, 0x00, 0x00, 0x48, 0x8D, 0x35, 0x3E, 0x0A,
-    0x00, 0x00, 0x83, 0x3E, 0x00, 0x74, 0x1A, 0x8B, 0x4E, 0x0C, 0x8B, 0x56, 0x04, 0x44, 0x8B, 0x46,
-    0x08, 0x4C, 0x8D, 0x4E, 0x14, 0x8B, 0x46, 0x10, 0x89, 0x44, 0x24, 0x20, 0xE8, 0x0F, 0x07, 0xF2,
-    0xFF, 0x48, 0x83, 0xC6, 0x20, 0xFF, 0xCB, 0x75, 0xD9, 0x48, 0x83, 0xC4, 0x30, 0x5E, 0x5B, 0x0F,
-    0x28, 0xBC, 0x24, 0xA0, 0x00, 0x00, 0x00, 0xE9, 0x34, 0xEC, 0xEB, 0xFF, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x83, 0x3E, 0x00, 0x75, 0x06, 0x48, 0x83, 0xFB,
+    0x03, 0x75, 0x05, 0xE9, 0x38, 0xDB, 0xEB, 0xFF, 0x4C, 0x89, 0xF0, 0xC3, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0xE9, 0xEB, 0x00, 0xED, 0xFF, 0x00, 0x00, 0x00, 0x53, 0x56, 0x57, 0x48, 0x83, 0xEC, 0x38, 0xE8,
+    0xEC, 0x00, 0x00, 0x00, 0x48, 0x85, 0xC0, 0x74, 0x57, 0x48, 0x89, 0xC7, 0x8B, 0x1F, 0x85, 0xDB,
+    0x74, 0x1B, 0x48, 0x8D, 0x77, 0x08, 0x8B, 0x0E, 0x48, 0x8B, 0x56, 0x08, 0x4C, 0x8B, 0x46, 0x10,
+    0xE8, 0xDB, 0x72, 0xD9, 0xFF, 0x48, 0x83, 0xC6, 0x18, 0xFF, 0xCB, 0x75, 0xE9, 0xBB, 0x02, 0x00,
+    0x00, 0x00, 0x48, 0x8D, 0x35, 0x37, 0x0A, 0x00, 0x00, 0x83, 0x3E, 0x00, 0x74, 0x1A, 0x8B, 0x4E,
+    0x0C, 0x8B, 0x56, 0x04, 0x44, 0x8B, 0x46, 0x08, 0x4C, 0x8D, 0x4E, 0x14, 0x8B, 0x46, 0x10, 0x89,
+    0x44, 0x24, 0x20, 0xE8, 0x08, 0x07, 0xF2, 0xFF, 0x48, 0x83, 0xC6, 0x20, 0xFF, 0xCB, 0x75, 0xD9,
+    0x48, 0x83, 0xC4, 0x38, 0x5F, 0x5E, 0x5B, 0x0F, 0x28, 0xBC, 0x24, 0xA0, 0x00, 0x00, 0x00, 0xE9,
+    0x2C, 0xEC, 0xEB, 0xFF, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x48, 0x8B, 0x05, 0x69, 0x02, 0x00, 0x00, 0x48, 0x85, 0xC0, 0x75, 0x3A, 0x57, 0x48, 0x83, 0xEC,
+    0x20, 0xB9, 0x00, 0x40, 0x00, 0x00, 0xBA, 0x10, 0x00, 0x00, 0x00, 0xFF, 0x15, 0xD7, 0x12, 0x00,
+    0x00, 0x48, 0x85, 0xC0, 0x74, 0x1B, 0x48, 0x89, 0x05, 0x43, 0x02, 0x00, 0x00, 0x48, 0x89, 0xC7,
+    0x31, 0xC0, 0xB9, 0x00, 0x08, 0x00, 0x00, 0xF3, 0x48, 0xAB, 0x48, 0x8B, 0x05, 0x2F, 0x02, 0x00,
+    0x00, 0x48, 0x83, 0xC4, 0x20, 0x5F, 0xC3, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x43, 0x48, 0x50, 0x4D, 0x48, 0x50, 0x47, 0x31,
 }
 
 local ZERO_CODE = {}
-local ZERO_DATA = {}
 local ZERO_AUX = {}
 local zeroIndex
 for zeroIndex = 1, CODE_SIZE do
     ZERO_CODE[zeroIndex] = 0
-end
-for zeroIndex = 1, DATA_SIZE do
-    ZERO_DATA[zeroIndex] = 0
 end
 for zeroIndex = 1, AUX_SIZE do
     ZERO_AUX[zeroIndex] = 0
@@ -383,6 +505,8 @@ local runtime = {
     waitingBuildLogged = false,
     waitingLimitLogged = false,
     lastBlocks = nil,
+    lastCurrentHp = nil,
+    lastMaximumHp = nil,
     lastCurrentMp = nil,
     lastMaximumMp = nil,
     lastFullOutlineColor = nil,
@@ -390,6 +514,7 @@ local runtime = {
     pulseFrame = 0,
     directMpLogged = false,
     effectiveMpLogged = false,
+    geometryWaitingLogged = false,
 }
 
 -- =========================================================================
@@ -461,11 +586,8 @@ local function codeImageMatches(left, right)
         return false
     end
     local index
-    for index = 1, #right do
-        local offset = index - 1
-        if (offset < 0x78 or offset > 0x7F)
-            and left[index] ~= right[index]
-        then
+    for index = 1, IMMUTABLE_CODE_SIZE do
+        if left[index] ~= right[index] then
             return false
         end
     end
@@ -492,6 +614,28 @@ local function safeWriteArray(address, bytes)
     end
     if not arraysEqual(safeReadArray(address, #bytes), bytes) then
         return false, "write did not verify"
+    end
+    return true
+end
+
+local function safeReadArrayAbsolute(address, length)
+    local ok, value = pcall(ReadArray, address, length, true)
+    if not ok or value == nil or #value < length then
+        return nil
+    end
+    return value
+end
+
+local function safeWriteArrayAbsolute(address, bytes)
+    local ok, reason = pcall(WriteArray, address, bytes, true)
+    if not ok then
+        return false, tostring(reason)
+    end
+    if not arraysEqual(
+        safeReadArrayAbsolute(address, #bytes),
+        bytes
+    ) then
+        return false, "absolute write did not verify"
     end
     return true
 end
@@ -580,7 +724,7 @@ local function packedPointParts(x, y)
 end
 
 -- =========================================================================
--- LIMIT BLOCK GEOMETRY
+-- SHARED AND CURVED HP GEOMETRY
 -- =========================================================================
 
 local function addRectangle(rectangles, x, y, width, height, color)
@@ -609,6 +753,180 @@ local function addRectangleEdges(rectangles, left, top, right, bottom, color)
         color
     )
 end
+
+local function addHpPathLayer(
+    rectangles,
+    hpAmount,
+    size,
+    inwardInset,
+    color
+)
+    local hp = CONFIG.HP
+    local amount = clamp(
+        math.floor(tonumber(hpAmount) or 0),
+        0,
+        hp.MAXIMUM_HP
+    )
+    if amount <= 0 then
+        return
+    end
+
+    local scale = hp.SCALE
+    local resolvedSize = math.max(1, round(size * scale))
+    local curveAmount = math.min(amount, hp.CURVE_HP)
+    local radiusX = math.max(
+        1,
+        (hp.CURVE_RADIUS_X - inwardInset) * scale
+    )
+    local radiusY = math.max(
+        1,
+        (hp.CURVE_RADIUS_Y - inwardInset) * scale
+    )
+    local point
+    for point = 0, curveAmount do
+        local angleDegrees =
+            180
+            + hp.CURVE_SWEEP_DEGREES * point / hp.CURVE_HP
+        local angle = angleDegrees * math.pi / 180
+        local centerX =
+            hp.CENTER_X + math.cos(angle) * radiusX
+        local centerY =
+            hp.CENTER_Y + math.sin(angle) * radiusY
+        if point == 0 then
+            -- The supplied path begins with a flat lower cut at its left end.
+            addRectangle(
+                rectangles,
+                centerX - resolvedSize / 2,
+                centerY - resolvedSize / 2,
+                resolvedSize,
+                math.max(1, math.floor(resolvedSize / 2) + 2),
+                color
+            )
+        elseif point == curveAmount and curveAmount <= 25 then
+            -- Through the quarter-curve checkpoint, retain the reference's
+            -- flat right-side endpoint instead of a square overhang.
+            addRectangle(
+                rectangles,
+                centerX - resolvedSize / 2,
+                centerY - resolvedSize / 2,
+                math.max(1, resolvedSize - 2),
+                resolvedSize,
+                color
+            )
+        elseif point == curveAmount and curveAmount <= 50 then
+            -- The half-curve endpoint has the matching flat lower cut.
+            addRectangle(
+                rectangles,
+                centerX - resolvedSize / 2,
+                centerY - resolvedSize / 2,
+                resolvedSize,
+                math.max(1, resolvedSize - 2),
+                color
+            )
+        else
+            addRectangle(
+                rectangles,
+                centerX - resolvedSize / 2,
+                centerY - resolvedSize / 2,
+                resolvedSize,
+                resolvedSize,
+                color
+            )
+        end
+    end
+
+    if amount > hp.CURVE_HP then
+        local straightAmount =
+            (amount - hp.CURVE_HP)
+            / (hp.MAXIMUM_HP - hp.CURVE_HP)
+        local length = math.max(
+            1,
+            round(hp.STRAIGHT_MAX_LENGTH * scale * straightAmount)
+        )
+        local centerY = hp.CENTER_Y + radiusY
+        addRectangle(
+            rectangles,
+            hp.CENTER_X - length,
+            centerY - resolvedSize / 2,
+            length,
+            resolvedSize,
+            color
+        )
+    end
+end
+
+local function buildHpRectangles(currentHp, maximumHp)
+    local rectangles = {}
+    local hp = CONFIG.HP
+    local maximum = clamp(
+        math.floor(tonumber(maximumHp) or 1),
+        1,
+        hp.MAXIMUM_HP
+    )
+    local current = clamp(
+        math.floor(tonumber(currentHp) or 0),
+        0,
+        maximum
+    )
+
+    -- Capacity: black outline plus a three-stop inward gray gradient.
+    addHpPathLayer(
+        rectangles,
+        maximum,
+        hp.OUTLINE_SIZE,
+        0,
+        hp.OUTLINE_COLOR
+    )
+    addHpPathLayer(
+        rectangles,
+        maximum,
+        hp.INTERIOR_SIZE,
+        0,
+        hp.EMPTY_OUTER_COLOR
+    )
+    addHpPathLayer(
+        rectangles,
+        maximum,
+        hp.MIDDLE_SIZE,
+        hp.MIDDLE_INSET,
+        hp.EMPTY_MIDDLE_COLOR
+    )
+    addHpPathLayer(
+        rectangles,
+        maximum,
+        hp.INNER_SIZE,
+        hp.INNER_INSET,
+        hp.EMPTY_INNER_COLOR
+    )
+
+    -- Current HP overlays only the exact path length represented by current.
+    addHpPathLayer(
+        rectangles,
+        current,
+        hp.INTERIOR_SIZE,
+        0,
+        hp.FILL_OUTER_COLOR
+    )
+    addHpPathLayer(
+        rectangles,
+        current,
+        hp.MIDDLE_SIZE,
+        hp.MIDDLE_INSET,
+        hp.FILL_MIDDLE_COLOR
+    )
+    addHpPathLayer(
+        rectangles,
+        current,
+        hp.INNER_SIZE,
+        hp.INNER_INSET,
+        hp.FILL_INNER_COLOR
+    )
+    return rectangles
+end
+
+-- =========================================================================
+-- LIMIT BLOCK GEOMETRY
+-- =========================================================================
 
 local function addBlock(rectangles, block, filled, fullOutlineColor)
     local scale = CONFIG.ORIGIN.SCALE
@@ -957,14 +1275,20 @@ end
 
 local function buildCombinedRectangles(
     blockCount,
+    currentHp,
+    maximumHp,
     currentMp,
     maximumMp,
     completeOutlineColor
 )
-    local rectangles =
+    local rectangles = buildHpRectangles(currentHp, maximumHp)
+    local limitRectangles =
         buildLimitRectangles(blockCount, completeOutlineColor)
     local mpRectangles = buildMpRectangles(currentMp, maximumMp)
     local index
+    for index = 1, #limitRectangles do
+        rectangles[#rectangles + 1] = limitRectangles[index]
+    end
     for index = 1, #mpRectangles do
         rectangles[#rectangles + 1] = mpRectangles[index]
     end
@@ -1051,29 +1375,29 @@ local function auxiliaryBytes(limitLabelColor)
     return output
 end
 
+local function geometryPointer()
+    local pointer = safeReadLong(DATA_POINTER_RVA)
+    if not plausibleRuntimeAddress(pointer) then
+        return nil
+    end
+    return pointer
+end
+
 local function publishRectangles(rectangles, limitLabelColor)
     local records, reason = serializeRectangles(rectangles)
     if records == nil then
         return false, reason
     end
 
-    local image = {}
-    local index
-    for index = 1, DATA_SIZE do
-        image[index] = 0
+    local pointer = geometryPointer()
+    if pointer == nil then
+        return nil, "waiting for the one-time geometry allocation"
     end
-    local header = {}
-    appendU32(header, 0)
-    appendU32(header, DATA_SENTINEL)
-    for index = 1, #header do
-        image[index] = header[index]
-    end
-    for index = 1, #records do
-        image[RECTANGLE_RECORDS_OFFSET + index] = records[index]
-    end
+
     local ok
     local writeReason
-    ok, writeReason = safeWriteArray(DATA_RVA, { 0, 0, 0, 0 })
+    ok, writeReason =
+        safeWriteArrayAbsolute(pointer, { 0, 0, 0, 0 })
     if not ok then
         return false, "could not suspend traversal: " .. tostring(writeReason)
     end
@@ -1082,13 +1406,26 @@ local function publishRectangles(rectangles, limitLabelColor)
     if not ok then
         return false, "could not publish labels: " .. tostring(writeReason)
     end
-    ok, writeReason = safeWriteArray(DATA_RVA, image)
+    local sentinelBytes = {}
+    appendU32(sentinelBytes, DATA_SENTINEL)
+    ok, writeReason =
+        safeWriteArrayAbsolute(pointer + 4, sentinelBytes)
     if not ok then
-        return false, "could not publish geometry: " .. tostring(writeReason)
+        return false, "could not publish geometry sentinel: "
+            .. tostring(writeReason)
+    end
+    ok, writeReason =
+        safeWriteArrayAbsolute(
+            pointer + RECTANGLE_RECORDS_OFFSET,
+            records
+        )
+    if not ok then
+        return false, "could not publish geometry: "
+            .. tostring(writeReason)
     end
     local countBytes = {}
     appendU32(countBytes, #rectangles)
-    ok, writeReason = safeWriteArray(DATA_RVA, countBytes)
+    ok, writeReason = safeWriteArrayAbsolute(pointer, countBytes)
     if not ok then
         return false, "could not activate geometry: " .. tostring(writeReason)
     end
@@ -1147,6 +1484,50 @@ local function validateGradient(gradient, name)
 end
 
 local function validateConfiguration()
+    local hp = CONFIG.HP
+    if type(hp) ~= "table"
+        or type(hp.CENTER_X) ~= "number"
+        or type(hp.CENTER_Y) ~= "number"
+        or type(hp.SCALE) ~= "number"
+        or hp.SCALE <= 0
+        or hp.SCALE > 4
+        or hp.CURVE_HP ~= 75
+        or hp.CURVE_SWEEP_DEGREES ~= 270
+        or hp.MAXIMUM_HP ~= 255
+        or type(hp.CURVE_RADIUS_X) ~= "number"
+        or type(hp.CURVE_RADIUS_Y) ~= "number"
+        or hp.CURVE_RADIUS_X < 4
+        or hp.CURVE_RADIUS_Y < 4
+        or type(hp.STRAIGHT_MAX_LENGTH) ~= "number"
+        or hp.STRAIGHT_MAX_LENGTH < 1
+        or type(hp.OUTLINE_SIZE) ~= "number"
+        or type(hp.INTERIOR_SIZE) ~= "number"
+        or type(hp.MIDDLE_SIZE) ~= "number"
+        or type(hp.INNER_SIZE) ~= "number"
+        or hp.OUTLINE_SIZE <= hp.INTERIOR_SIZE
+        or hp.INTERIOR_SIZE <= hp.MIDDLE_SIZE
+        or hp.MIDDLE_SIZE <= hp.INNER_SIZE
+        or hp.INNER_SIZE < 1
+        or type(hp.MIDDLE_INSET) ~= "number"
+        or type(hp.INNER_INSET) ~= "number"
+        or hp.MIDDLE_INSET < 0
+        or hp.INNER_INSET <= hp.MIDDLE_INSET
+        or hp.INNER_INSET >= hp.CURVE_RADIUS_X
+        or hp.INNER_INSET >= hp.CURVE_RADIUS_Y
+    then
+        return false, "HP path position/capacity/layer settings are invalid"
+    end
+    if type(hp.PREVIEW_CURRENT) ~= "number"
+        or type(hp.PREVIEW_MAXIMUM) ~= "number"
+        or hp.PREVIEW_CURRENT < -1
+        or hp.PREVIEW_MAXIMUM < 1
+        or hp.PREVIEW_MAXIMUM > hp.MAXIMUM_HP
+        or (hp.PREVIEW_CURRENT >= 0
+            and hp.PREVIEW_CURRENT > hp.PREVIEW_MAXIMUM)
+    then
+        return false, "HP preview values are invalid"
+    end
+
     local mp = CONFIG.MP
     if type(mp) ~= "table"
         or type(mp.RIGHT_X) ~= "number"
@@ -1286,6 +1667,13 @@ local function validateConfiguration()
         return false, labelReason
     end
     local colors = {
+        hp.OUTLINE_COLOR,
+        hp.EMPTY_OUTER_COLOR,
+        hp.EMPTY_MIDDLE_COLOR,
+        hp.EMPTY_INNER_COLOR,
+        hp.FILL_OUTER_COLOR,
+        hp.FILL_MIDDLE_COLOR,
+        hp.FILL_INNER_COLOR,
         CONFIG.COLORS.FILLED_EDGE,
         CONFIG.COLORS.FILLED_CENTER,
         CONFIG.COLORS.EMPTY_OUTLINE,
@@ -1329,15 +1717,17 @@ local function validateConfiguration()
     local combined =
         buildCombinedRectangles(
             5,
-            mp.MINIMUM_MAX_MP,
-            mp.MAXIMUM_MAX_MP,
+            hp.MAXIMUM_HP,
+            hp.MAXIMUM_HP,
+            1,
+            2,
             pulse.OUTLINE_START_COLOR
         )
     if #combined > MAX_RECTANGLES
         or RECTANGLE_RECORDS_OFFSET
-            + #combined * RECTANGLE_RECORD_SIZE > DATA_SIZE
+            + #combined * RECTANGLE_RECORD_SIZE > HEAP_DATA_SIZE
     then
-        return false, "combined geometry exceeds the private data cache"
+        return false, "combined geometry exceeds the aligned data buffer"
     end
     if LABEL_RECORD_SIZE * 2 ~= AUX_SIZE
         or #auxiliaryBytes(pulse.TEXT_START_COLOR) ~= AUX_SIZE
@@ -1362,11 +1752,26 @@ local function verifyNativeSignatures()
     end
     local nativeSignatures = {
         {
+            rva = ALIGNED_MALLOC_CALL_RVA,
+            name = "native aligned-allocator call site",
+            bytes = {
+                0xFF, 0x15, 0x45, 0xAF, 0x2D, 0x00,
+            },
+        },
+        {
             rva = 0x269190,
             name = "native base HUD sprite builder",
             bytes = {
                 0x48, 0x8B, 0xC4, 0x56, 0x41, 0x56, 0x48, 0x81,
                 0xEC, 0x88, 0x00, 0x00, 0x00, 0x48, 0x89, 0x58,
+            },
+        },
+        {
+            rva = 0x2698C0,
+            name = "native player HP builder",
+            bytes = {
+                0x40, 0x53, 0x55, 0x56, 0x57, 0x41, 0x55, 0x41,
+                0x56, 0x48, 0x81, 0xEC, 0x28, 0x02, 0x00, 0x00,
             },
         },
         {
@@ -1422,6 +1827,10 @@ local function verifyNativeSignatures()
     ) then
         return false, "native ASCII font renderer signature does not match"
     end
+    local allocator = safeReadLong(ALIGNED_MALLOC_IAT_RVA)
+    if not plausibleRuntimeAddress(allocator) then
+        return false, "verified aligned allocator import is unavailable"
+    end
     return true
 end
 
@@ -1439,25 +1848,38 @@ end
 local function privateState()
     local code = safeReadArray(CAVE_RVA, CODE_SIZE)
     if codeImageMatches(code, CAVE_CODE) then
-        local sentinel = safeReadInt(DATA_RVA + 4)
+        local caveSentinel = safeReadInt(CAVE_SENTINEL_RVA)
         local auxiliarySentinel = safeReadInt(AUX_RVA + 0x1C)
-        local count = safeReadInt(DATA_RVA)
-        if sentinel == DATA_SENTINEL
-            and auxiliarySentinel == AUX_SENTINEL
-            and count ~= nil
-            and count <= MAX_RECTANGLES
-        then
+        local auxiliary = safeReadArray(AUX_RVA, AUX_SIZE)
+        local pointer = safeReadLong(DATA_POINTER_RVA) or 0
+        local pointerOk = pointer == 0 or plausibleRuntimeAddress(pointer)
+        local auxiliaryOk =
+            auxiliarySentinel == AUX_SENTINEL
+            or isZeroArray(auxiliary)
+        if caveSentinel == CAVE_SENTINEL
+            and pointerOk
+            and auxiliaryOk then
+            if pointer ~= 0 then
+                local count = safeReadIntAbsolute(pointer)
+                local sentinel = safeReadIntAbsolute(pointer + 4)
+                if count == nil
+                    or count > MAX_RECTANGLES
+                    or (count > 0 and sentinel ~= DATA_SENTINEL)
+                then
+                    return nil,
+                        "owned heap geometry header is invalid"
+                end
+            end
             return "owned"
         end
-        return nil, "owned code exists, but its data sentinel is invalid"
+        return nil, "owned code exists, but its pointer/sentinel is invalid"
     end
     if isZeroArray(code) then
-        local data = safeReadArray(DATA_RVA, DATA_SIZE)
         local auxiliary = safeReadArray(AUX_RVA, AUX_SIZE)
-        if isZeroArray(data) and isZeroArray(auxiliary) then
+        if isZeroArray(auxiliary) then
             return "empty"
         end
-        return nil, "private data or label region is already in use"
+        return nil, "private label region is already in use"
     end
     return nil, "private Sora HUD bridge region is already in use"
 end
@@ -1470,6 +1892,12 @@ local function install()
 
     local patches = {
         {
+            address = HP_GAUGE_BYPASS_RVA,
+            custom = HP_GAUGE_CUSTOM,
+            original = HP_GAUGE_ORIGINAL,
+            name = "native HP outline/capacity bypass",
+        },
+        {
             address = MP_GAUGE_BYPASS_RVA,
             custom = MP_GAUGE_CUSTOM,
             original = MP_GAUGE_ORIGINAL,
@@ -1480,6 +1908,12 @@ local function install()
             custom = MP_FILL_CUSTOM,
             original = MP_FILL_ORIGINAL,
             name = "native MP fill bypass",
+        },
+        {
+            address = HP_FILL_CALL_RVA,
+            custom = HP_FILL_CUSTOM,
+            original = HP_FILL_ORIGINAL,
+            name = "native HP fill bypass",
         },
         {
             address = MP_CHARGE_FILL_CALL_RVA,
@@ -1497,13 +1931,13 @@ local function install()
             address = BASE_SPRITE_CALL_RVA,
             custom = BASE_SPRITE_CUSTOM,
             original = BASE_SPRITE_ORIGINAL,
-            name = "native MP layer/label filter",
+            name = "Sora face-only native sprite filter",
         },
         {
             address = SORA_HUD_CALL_RVA,
             custom = SORA_HUD_CALL_CUSTOM,
             original = SORA_HUD_CALL_ORIGINAL,
-            name = "player-HUD MP capture bridge",
+            name = "player-HUD geometry allocation bridge",
         },
         {
             address = FINAL_RENDER_CALL_RVA,
@@ -1515,7 +1949,7 @@ local function install()
             address = POST_LOOP_HOOK_RVA,
             custom = POST_LOOP_HOOK_CUSTOM,
             original = POST_LOOP_HOOK_ORIGINAL,
-            name = "post-loop LIMIT/MP renderer",
+            name = "post-loop HP/LIMIT/MP renderer",
         },
     }
 
@@ -1560,21 +1994,6 @@ local function install()
     if not codeOk then
         return false, "could not write private code: " .. tostring(codeReason)
     end
-    local dataOk, dataReason =
-        publishRectangles(
-            buildCombinedRectangles(
-                0,
-                0,
-                CONFIG.MP.MINIMUM_MAX_MP,
-                CONFIG.FULL_PULSE.OUTLINE_START_COLOR
-            ),
-            CONFIG.LIMIT_LABEL.COLOR
-        )
-    if not dataOk then
-        safeWriteArray(AUX_RVA, ZERO_AUX)
-        safeWriteArray(CAVE_RVA, ZERO_CODE)
-        return false, dataReason
-    end
 
     local written = {}
     for index = 1, #patches do
@@ -1588,7 +2007,6 @@ local function install()
                     written[restoreIndex].original
                 )
             end
-            safeWriteArray(DATA_RVA, ZERO_DATA)
             safeWriteArray(AUX_RVA, ZERO_AUX)
             safeWriteArray(CAVE_RVA, ZERO_CODE)
             return false, "could not install " .. patch.name
@@ -1627,7 +2045,7 @@ local function safeReadByte(address)
     return tonumber(value)
 end
 
-local function readAlwaysLiveMp()
+local function readAlwaysLiveStats()
     local sora = safeReadLong(SORA_POINTER_RVA) or 0
     if not plausibleRuntimeAddress(sora) then
         return nil
@@ -1646,22 +2064,53 @@ local function readAlwaysLiveMp()
 
     local currentHp =
         safeReadIntAbsolute(statPage + STAT_CURRENT_HP_OFFSET)
+    local maximumHp =
+        safeReadIntAbsolute(statPage + STAT_MAXIMUM_HP_OFFSET)
     local currentMp =
         safeReadIntAbsolute(statPage + STAT_CURRENT_MP_OFFSET)
     local maximumMp =
         safeReadIntAbsolute(statPage + STAT_MAXIMUM_MP_OFFSET)
-    if currentHp == nil or currentMp == nil or maximumMp == nil
-        or currentHp < 1 or currentHp > 9999
+    if currentHp == nil or maximumHp == nil
+        or currentMp == nil or maximumMp == nil
+        or maximumHp < 1 or maximumHp > CONFIG.HP.MAXIMUM_HP
+        or currentHp > maximumHp
         or maximumMp < 1 or maximumMp > 255
         or currentMp > maximumMp
     then
         return nil
     end
 
-    return math.floor(currentMp), math.floor(maximumMp)
+    return math.floor(currentHp),
+        math.floor(maximumHp),
+        math.floor(currentMp),
+        math.floor(maximumMp)
 end
 
-local function readMp()
+local function readHp(directCurrent, directMaximum)
+    local hp = CONFIG.HP
+    if hp.PREVIEW_CURRENT >= 0 then
+        return clamp(
+            math.floor(hp.PREVIEW_CURRENT),
+            0,
+            math.floor(hp.PREVIEW_MAXIMUM)
+        ), math.floor(hp.PREVIEW_MAXIMUM), "preview"
+    end
+    if directCurrent ~= nil and directMaximum ~= nil then
+        return directCurrent,
+            directMaximum,
+            "always-live Sora stat page"
+    end
+    local current = safeReadByte(SORA_BASE_RVA + CURRENT_HP_OFFSET)
+    local maximum = safeReadByte(SORA_BASE_RVA + MAX_HP_OFFSET)
+    if current ~= nil and maximum ~= nil and maximum >= 1 then
+        return clamp(math.floor(current), 0, math.floor(maximum)),
+            math.floor(maximum),
+            "saved-stat fallback"
+    end
+    return 0, 1, "waiting for Sora HP data"
+end
+
+local function readMp(directCurrent, directMaximum)
     local mp = CONFIG.MP
     if mp.PREVIEW_CURRENT >= 0 then
         return clamp(
@@ -1674,25 +2123,14 @@ local function readMp()
     -- Primary source: the same live Sora stat page used by MP Haste/Rage v6.
     -- This path updates in exploration, combat, and every other active
     -- gameplay state; it does not depend on the native MP HUD builder running.
-    local current, maximum = readAlwaysLiveMp()
-    if current ~= nil and maximum ~= nil then
-        return current, maximum, "always-live Sora stat page"
+    if directCurrent ~= nil and directMaximum ~= nil then
+        return directCurrent,
+            directMaximum,
+            "always-live Sora stat page"
     end
 
-    -- First fallback: the native player-HUD capture retained for compatibility.
-    current = safeReadInt(CAPTURE_CURRENT_MP_RVA)
-    maximum = safeReadInt(CAPTURE_MAXIMUM_MP_RVA)
-    if current ~= nil and maximum ~= nil
-        and current >= 0 and current <= 999
-        and maximum >= 1 and maximum <= 999
-    then
-        return clamp(math.floor(current), 0, math.floor(maximum)),
-            math.floor(maximum),
-            "equipment-adjusted runtime stats"
-    end
-
-    current = safeReadByte(SORA_BASE_RVA + CURRENT_MP_OFFSET)
-    maximum = safeReadByte(SORA_BASE_RVA + MAX_MP_OFFSET)
+    local current = safeReadByte(SORA_BASE_RVA + CURRENT_MP_OFFSET)
+    local maximum = safeReadByte(SORA_BASE_RVA + MAX_MP_OFFSET)
     if current ~= nil and maximum ~= nil and maximum >= 1 then
         return clamp(math.floor(current), 0, math.floor(maximum)),
             math.floor(maximum),
@@ -1702,6 +2140,18 @@ local function readMp()
 end
 
 local function updateGauge()
+    if geometryPointer() == nil then
+        if not runtime.geometryWaitingLogged then
+            runtime.geometryWaitingLogged = true
+            log("WAITING: the player HUD has not allocated its geometry buffer yet.")
+        end
+        return true
+    end
+    if runtime.geometryWaitingLogged then
+        runtime.geometryWaitingLogged = false
+        log("ACTIVE: aligned HP/MP/LIMIT geometry buffer is ready.")
+    end
+
     local limit, limitSource = readLimit()
     if limit == nil then
         limit = 0
@@ -1716,17 +2166,17 @@ local function updateGauge()
 
     local blocks = math.floor(limit / CONFIG.GAUGE.POINTS_PER_BLOCK)
     blocks = clamp(blocks, 0, CONFIG.GAUGE.MAX_BLOCKS)
-    local currentMp, maximumMp, mpSource = readMp()
+    local directCurrentHp, directMaximumHp, directCurrentMp, directMaximumMp =
+        readAlwaysLiveStats()
+    local currentHp, maximumHp, hpSource =
+        readHp(directCurrentHp, directMaximumHp)
+    local currentMp, maximumMp, mpSource =
+        readMp(directCurrentMp, directMaximumMp)
     if mpSource == "always-live Sora stat page"
         and not runtime.directMpLogged
     then
         runtime.directMpLogged = true
         log("MP SOURCE: always-live Sora stat page is active; no combat gate.")
-    elseif mpSource == "equipment-adjusted runtime stats"
-        and not runtime.effectiveMpLogged
-    then
-        runtime.effectiveMpLogged = true
-        log("MP FALLBACK: native HUD capture is active.")
     end
 
     local completeOutlineColor = nil
@@ -1743,6 +2193,8 @@ local function updateGauge()
     end
 
     if blocks == runtime.lastBlocks
+        and currentHp == runtime.lastCurrentHp
+        and maximumHp == runtime.lastMaximumHp
         and currentMp == runtime.lastCurrentMp
         and maximumMp == runtime.lastMaximumMp
         and completeOutlineColor == runtime.lastFullOutlineColor
@@ -1754,30 +2206,41 @@ local function updateGauge()
     local rectangles =
         buildCombinedRectangles(
             blocks,
+            currentHp,
+            maximumHp,
             currentMp,
             maximumMp,
             completeOutlineColor
         )
     local ok, result =
         publishRectangles(rectangles, completeLabelColor)
+    if ok == nil then
+        return true
+    end
     if not ok then
         return false, result
     end
     runtime.lastBlocks = blocks
+    runtime.lastCurrentHp = currentHp
+    runtime.lastMaximumHp = maximumHp
     runtime.lastCurrentMp = currentMp
     runtime.lastMaximumMp = maximumMp
     runtime.lastFullOutlineColor = completeOutlineColor
     runtime.lastFullLabelColor = completeLabelColor
     if CONFIG.LOG_VALUE_CHANGES
         or limitSource == "preview"
+        or hpSource == "preview"
         or mpSource == "preview"
     then
         log("DISPLAY: LIMIT=" .. tostring(limit)
             .. " blocks=" .. tostring(blocks)
+            .. " HP=" .. tostring(currentHp)
+            .. "/" .. tostring(maximumHp)
             .. " MP=" .. tostring(currentMp)
             .. "/" .. tostring(maximumMp)
             .. " rectangles=" .. tostring(result)
             .. " limit_source=" .. tostring(limitSource)
+            .. " hp_source=" .. tostring(hpSource)
             .. " mp_source=" .. tostring(mpSource) .. ".")
     end
     return true
@@ -1827,10 +2290,20 @@ function _OnFrame()
         end
 
         runtime.installed = true
-        log("READY: always-live custom MP bar + exact pulsing five-slot LIMIT gauge; "
+        log("READY: curved HP + always-live custom MP + exact pulsing LIMIT HUD; "
             .. tostring(installReason) .. ".")
+        log("NATIVE HP REMOVED: outline, capacity, fill, backing layer, and label.")
         log("NATIVE MP REMOVED: outline, fill, charge strip, capacity caps, layer, and label.")
-        log("NATIVE HUD PRESERVED: Sora portrait, main HP gauge, and all non-MP base sprites.")
+        log("NATIVE HUD PRESERVED: Sora face image and every non-Sora HUD sprite.")
+        log("HP LAYOUT: center X=" .. tostring(CONFIG.HP.CENTER_X)
+            .. " Y=" .. tostring(CONFIG.HP.CENTER_Y)
+            .. " radius="
+            .. tostring(CONFIG.HP.CURVE_RADIUS_X)
+            .. "x" .. tostring(CONFIG.HP.CURVE_RADIUS_Y)
+            .. " curve=1.." .. tostring(CONFIG.HP.CURVE_HP)
+            .. " straight=" .. tostring(CONFIG.HP.CURVE_HP + 1)
+            .. ".." .. tostring(CONFIG.HP.MAXIMUM_HP)
+            .. " scale=" .. tostring(CONFIG.HP.SCALE) .. ".")
         log("MP LAYOUT: RIGHT_X=" .. tostring(CONFIG.MP.RIGHT_X)
             .. " Y=" .. tostring(CONFIG.MP.Y)
             .. " LENGTH="
@@ -1856,7 +2329,10 @@ function _OnFrame()
     local updateOk, updateReason = updateGauge()
     if not updateOk then
         runtime.stopped = true
-        safeWriteArray(DATA_RVA, { 0, 0, 0, 0 })
+        local pointer = geometryPointer()
+        if pointer ~= nil then
+            safeWriteArrayAbsolute(pointer, { 0, 0, 0, 0 })
+        end
         log("STOPPED: " .. tostring(updateReason)
             .. ". Rectangle traversal was suspended.")
     end

@@ -1,104 +1,84 @@
-KH1FM MAX-MP-SCALED BAR + PULSING LIMIT GAUGE v1.2
+KH1FM CURVED HP + CUSTOM MP + PULSING LIMIT HUD v1.3
 
 INSTALLATION
-1. Disable Custom MP Bar + LIMIT Gauge v1 and v1.1.
-2. Disable KH1FM Exact Five-Slot LIMIT Gauge v2.2.
+1. Disable Custom MP Bar + LIMIT Gauge v1/v1.1/v1.2.
+2. Disable standalone LIMIT Gauge v2.2.
 3. Disable every older Numeric, Graphic, Texture Sora HUD, and Resource Probe.
 4. Keep LIMIT System v1.6 enabled.
 5. Install this ZIP through OpenKH Mod Manager.
-6. Completely close KH1FM, then use Build and Run. Do not switch HUD scripts
+6. Completely close KH1FM, then use Build and Run. Do not change HUD scripts
    with F1.
 
 EXPECTED CONSOLE PREFIX
-[CustomMpLimitV1.2]
+[CurvedHpMpLimitV1.3]
 
-EASY MP SETTINGS
+WHAT v1.3 CHANGES
+- Preserves Sora's native -a3290.dds face image.
+- Removes the native HP outline, capacity, fill, circular backing, and HP label.
+- Removes the native MP outline, fill, charge strip, capacity caps, layer, and
+  MP label.
+- Adds the supplied curved/straight gray and gradient-green HP design.
+- Retains the v1.2 scalable MP bar and exact pulsing five-slot LIMIT design.
+- Replaces no DDS or MDLS file.
+
+HP CAPACITY AND FILL
+- 25 maximum HP reaches 90 degrees around the curve.
+- 37 maximum HP reaches the supplied intermediate upper-right point.
+- 50 maximum HP reaches 180 degrees.
+- 75 maximum HP completes the 270-degree curve.
+- 76..255 maximum HP extends continuously left from the curve's lower endpoint.
+- 255 maximum HP reaches X=3, matching the supplied full-length reference.
+- Current HP fills that same path in exact integer-HP steps. Maximum HP changes
+  only the available gray capacity; damage and healing change only green fill.
+- HP reads the equipment-adjusted always-live Sora stat page in and out of
+  combat, with the saved stat bytes retained only as startup fallback.
+
+EASY HP SETTINGS
 Open:
-scripts/ZZZ_KH1FM_Custom_MP_Bar_LIMIT_Gauge_v1_2.lua
+scripts/ZZZ_KH1FM_Curved_HP_Custom_MP_LIMIT_HUD_v1_3.lua
 
-Edit only CONFIG.MP near the top:
+Edit CONFIG.HP near the top:
 
-RIGHT_X / Y
-    Fixed exclusive right edge and vertical position in KH1's native 640x448
-    HUD space. Capacity growth always extends left from RIGHT_X.
+CENTER_X / CENTER_Y / SCALE
+    Move or resize the entire HP path.
 
-SCALE
-    Master size multiplier for the MP bar. RIGHT_X remains fixed.
+CURVE_RADIUS_X / CURVE_RADIUS_Y
+    Horizontal and vertical curve radii.
 
-MINIMUM_MAX_MP / MAXIMUM_MAX_MP
-    Maximum-MP endpoints used for capacity interpolation. Defaults: 10..255.
+STRAIGHT_MAX_LENGTH
+    Straight-section length at 255 maximum HP.
 
-MINIMUM_LENGTH / MAXIMUM_LENGTH
-    Outer widths at those endpoints. Defaults reproduce the references exactly:
-    7 pixels at 10 maximum MP and 179 pixels at 255 maximum MP.
+OUTLINE_SIZE / INTERIOR_SIZE / MIDDLE_SIZE / INNER_SIZE
+    Thickness of the black outline and gradient layers.
 
-HEIGHT / BORDER
-    Vertical size and border thickness. Defaults reproduce the 7-pixel height.
-
-EMPTY_DIRECTION
-    "LEFT_TO_RIGHT" makes spent MP disappear from the left while remaining MP
-    stays anchored on the right.
-    "RIGHT_TO_LEFT" makes spent MP disappear from the right while remaining MP
-    stays anchored on the left.
-
-FILL_GRADIENT
-    TOP_COLOR / UPPER_COLOR / MIDDLE_COLOR / LOWER_COLOR / BOTTOM_COLOR are the
-    five independently editable AABBGGRR purple gradient rows.
-
-EMPTY_GRADIENT
-    The same five adjustable stops for the gray empty-capacity background.
-
-BORDER_COLOR
-    Adjustable AABBGGRR outer-border color.
-
-LABEL.TEXT
-    Custom label text, up to seven ASCII characters.
-
-LABEL.X / LABEL.Y / LABEL.COLOR / LABEL.FONT_SIZE
-    Independent MP label controls.
+OUTLINE_COLOR
+EMPTY_OUTER_COLOR / EMPTY_MIDDLE_COLOR / EMPTY_INNER_COLOR
+FILL_OUTER_COLOR / FILL_MIDDLE_COLOR / FILL_INNER_COLOR
+    Adjustable AABBGGRR colors. Defaults reconstruct the supplied black,
+    gray, dark-green, middle-green, and yellow-green appearance.
 
 PREVIEW_CURRENT / PREVIEW_MAXIMUM
     Set PREVIEW_CURRENT to 0..PREVIEW_MAXIMUM for a visual test. Return it to
-    -1 for live MP.
+    -1 for live HP.
 
-BEHAVIOR
-- The fixed right endpoint is X=210 by default.
-- Maximum MP 10 produces the supplied 7x7 bar at X=203..209.
-- Maximum MP 255 produces the supplied 179x7 bar at X=31..209.
-- Intermediate maximums smoothly interpolate between those exact endpoints.
-- The purple fill is proportional to current MP inside the current capacity.
-- Current and maximum MP are read directly from Sora's always-live stat page
-  every frame. This uses the same compressed-pointer resolution as MP
-  Haste/Rage v6 and has no combat gate, so the bar updates during exploration.
-- The native-HUD capture and saved-stat bytes remain only as safe fallbacks.
-- Native MP outline, fill, MP Charge strip, capacity-extension packets, base
-  MP layer, and native MP label are removed.
-- Sora's native portrait and main HP gauge remain.
-- The LIMIT gauge exactly follows Reference_Exact_LIMIT_0.png,
-  Reference_Exact_LIMIT_80.png, and Reference_Exact_LIMIT_100.png.
-- Slots fill at 20/40/60/80/100. At 20..80, filled slots remain inside the
-  normal gray/black backs. At 100, all five red slots receive the teal outline.
-- At 100 only, the outline and LIMIT text pulse together. This is visual only
-  and never changes LIMIT gain, spending, thresholds, or maximum.
-- No DDS or MDLS replacement is used.
+MP SETTINGS RETAINED FROM v1.2
+- RIGHT_X remains the fixed exclusive right edge.
+- Maximum MP 10 produces a 7x7 bar; maximum MP 255 produces a 179x7 bar.
+- Capacity growth extends left.
+- EMPTY_DIRECTION selects left-to-right or right-to-left depletion.
+- FILL_GRADIENT and EMPTY_GRADIENT expose five vertical color stops.
+- LABEL exposes editable MP text, position, color, and size.
+- MP reads continuously outside combat.
 
-FULL-LIMIT PULSE SETTINGS
-Edit CONFIG.FULL_PULSE near the top of the Lua:
+LIMIT SETTINGS RETAINED FROM v1.2
+- Slots fill at 20/40/60/80/100.
+- At 100, the teal outline and LIMIT text pulse together.
+- FULL_PULSE controls enable, cycle speed, color steps, outline endpoints, and
+  text endpoints.
+- LIMIT gameplay mechanics are unchanged.
 
-ENABLE
-    true enables the full-state flash; false keeps the start colors solid.
-
-INCLUDE_LIMIT_TEXT
-    true pulses the LIMIT text with the outline; false leaves the text red.
-
-CYCLE_SECONDS
-    Seconds for one complete start -> peak -> start cycle. Default: 3.00.
-
-COLOR_STEPS
-    Number of interpolation steps. Default: 30.
-
-OUTLINE_START_COLOR / OUTLINE_PEAK_COLOR
-    Editable AABBGGRR outline endpoints.
-
-TEXT_START_COLOR / TEXT_PEAK_COLOR
-    Independently editable AABBGGRR LIMIT-text endpoints.
+COMPATIBILITY
+- The renderer keeps Enemy HP HUD v4.1's module+0x3AF700..0x3AFE00 region free.
+- It keeps LIMIT System v1.6's module+0x3AFE40..0x3B0000 region free.
+- One 0x4000-byte aligned geometry buffer is allocated once after the player
+  HUD loads; there is no per-frame allocation.
