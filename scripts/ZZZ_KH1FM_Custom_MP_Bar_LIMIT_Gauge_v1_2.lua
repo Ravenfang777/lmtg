@@ -119,8 +119,8 @@ local CONFIG = {
             ENABLE = true,
             TEXT = "MP",
             -- Kept to the right of the fixed bar endpoint.
-            X = 504,
-            Y = 350,
+            X = 484,
+            Y = 340,
             COLOR = 0x80E41853,
             FONT_SIZE = 8,
         },
