@@ -138,8 +138,8 @@ local CONFIG = {
         LABEL = {
             ENABLE = true,
             TEXT = "HP",
-            X = 470,
-            Y = 330,
+            X = 468,
+            Y = 300,
             COLOR = 0x8008D5AC,
             FONT_SIZE = 8,
         },
