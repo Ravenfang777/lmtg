@@ -171,12 +171,6 @@ local CONFIG = {
             WIDTH = 20, HEIGHT = 3,
             COLOR = 0x80000000,
         },
-        {
-            ENABLE = true,
-            X = 21, Y = 122,
-            WIDTH = 20, HEIGHT = 3,
-            COLOR = 0x80000000,
-        },
     },
 
     -- Custom MP bar. Coordinates use KH1's native 640x448 HUD space.
