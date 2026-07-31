@@ -298,12 +298,12 @@ local CONFIG = {
     FULL_PULSE = {
         ENABLE = true,
         INCLUDE_LIMIT_TEXT = true,
-        CYCLE_SECONDS = .60,
+        CYCLE_SECONDS = 1.60,
         COLOR_STEPS = 30,
         OUTLINE_START_COLOR = 0x80FFEE00, -- RGB 0,238,255
         OUTLINE_PEAK_COLOR = 0x80000000,  -- RGB 0,0,0
         TEXT_START_COLOR = 0x80FFEE00,    -- RGB 0,238,255
-        TEXT_PEAK_COLOR = 0x802A14E2,     -- RGB 226,20,42
+        TEXT_PEAK_COLOR = 0x8051FF00,     -- RGB 226,20,42
     },
 
     -- Kept as a named setting so all threshold logic stays explicit.
