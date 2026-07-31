@@ -77,7 +77,7 @@ local CONFIG = {
         -- RIGHT_X is the fixed exclusive right edge. Capacity growth extends
         -- left from this point, matching all four supplied references.
         RIGHT_X = 210,
-        Y = 25,
+        Y = 75,
         SCALE = 1.00,
 
         -- Capacity interpolation endpoints. Defaults match the references:
@@ -85,8 +85,8 @@ local CONFIG = {
         -- Max MP 255 -> outer width 179 (X=31..209)
         MINIMUM_MAX_MP = 10,
         MAXIMUM_MAX_MP = 255,
-        MINIMUM_LENGTH = 7,
-        MAXIMUM_LENGTH = 179,
+        MINIMUM_LENGTH = 10,
+        MAXIMUM_LENGTH = 255,
 
         HEIGHT = 7,
         BORDER = 1,
