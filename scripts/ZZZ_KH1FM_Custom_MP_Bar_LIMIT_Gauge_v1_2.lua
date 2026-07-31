@@ -175,10 +175,10 @@ local CONFIG = {
     LIMIT_LABEL = {
         ENABLE = true,
         TEXT = "LIMIT",
-        X = 524,
-        Y = 438,
+        X = 514,
+        Y = 428,
         COLOR = 0x800000FF,
-        FONT_SIZE = 12,
+        FONT_SIZE = 14,
     },
 
     COLORS = {
