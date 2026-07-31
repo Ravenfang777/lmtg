@@ -76,7 +76,7 @@ local CONFIG = {
     MP = {
         -- RIGHT_X is the fixed exclusive right edge. Capacity growth extends
         -- left from this point, matching all four supplied references.
-        RIGHT_X = 210,
+        RIGHT_X = 205,
         Y = 149,
         SCALE = 1.00,
 
@@ -120,7 +120,7 @@ local CONFIG = {
             TEXT = "MP",
             -- Kept to the right of the fixed bar endpoint.
             X = 214,
-            Y = 295,
+            Y = 350,
             COLOR = 0x80E41853,
             FONT_SIZE = 8,
         },
