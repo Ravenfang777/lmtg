@@ -88,8 +88,8 @@ local CONFIG = {
         MINIMUM_LENGTH = 10,
         MAXIMUM_LENGTH = 255,
 
-        HEIGHT = 6,
-        BORDER = 2,
+        HEIGHT = 7,
+        BORDER = 1,
 
         -- Direction in which purple MP disappears as current MP is spent:
         -- "LEFT_TO_RIGHT" keeps the remaining fill anchored on the right.
