@@ -179,7 +179,7 @@ local CONFIG = {
         -- left from this point, matching all four supplied references.
         RIGHT_X = 207,
         Y = 146,
-        SCALE = 1.00,
+        SCALE = .90,
 
         -- Revised capacity interpolation endpoints supplied for this variant.
         -- Max MP 10  -> outer width 10
