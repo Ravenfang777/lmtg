@@ -178,7 +178,7 @@ local CONFIG = {
         -- RIGHT_X is the fixed exclusive right edge. Capacity growth extends
         -- left from this point, matching all four supplied references.
         RIGHT_X = 223,
-        Y = 146,
+        Y = 142,
         SCALE = 1.00,
 
         -- Revised capacity interpolation endpoints supplied for this variant.
@@ -235,7 +235,7 @@ local CONFIG = {
     -- Revised LIMIT placement supplied for this variant.
     ORIGIN = {
         X = 75,
-        Y = 115,
+        Y = 112,
         SCALE = 0.54,
     },
 
