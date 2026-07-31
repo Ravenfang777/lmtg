@@ -179,7 +179,7 @@ local CONFIG = {
         {
             ENABLE = true,
             X = 216, Y = 125,
-            WIDTH = 16, HEIGHT = 8,
+            WIDTH = 16, HEIGHT = 7,
             COLOR = 0x80000000,
         },
         {
@@ -191,7 +191,7 @@ local CONFIG = {
             -- Fine adjustment in native 640x448 HUD pixels. ALONG_OFFSET
             -- moves along the HP path direction; NORMAL_OFFSET moves across
             -- the path. X/Y offsets are fixed screen-space corrections.
-            ALONG_OFFSET = 0,
+            ALONG_OFFSET = 1,
             NORMAL_OFFSET = 0,
             X_OFFSET = -2,
             Y_OFFSET = 0,
