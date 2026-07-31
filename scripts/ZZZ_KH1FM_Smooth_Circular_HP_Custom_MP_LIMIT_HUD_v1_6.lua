@@ -139,9 +139,9 @@ local CONFIG = {
             ENABLE = true,
             TEXT = "HP",
             X = 469,
-            Y = 316,
+            Y = 312,
             COLOR = 0x8008D5AC,
-            FONT_SIZE = 10,
+            FONT_SIZE = 8,
         },
 
         -- Visual-only test. -1 uses live HP.
