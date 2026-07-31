@@ -130,9 +130,9 @@ local CONFIG = {
         EMPTY_OUTER_COLOR = 0x802D2D2D, -- RGB 45,45,45
         EMPTY_MIDDLE_COLOR = 0x803E3E3E,-- RGB 62,62,62
         EMPTY_INNER_COLOR = 0x80484848, -- RGB 72,72,72
-        FILL_OUTER_COLOR = 0x802EA028,  -- RGB 40,160,46
-        FILL_MIDDLE_COLOR = 0x8008D5AC, -- RGB 96,182,30
-        FILL_INNER_COLOR = 0x8008D5AC,  -- RGB 172,213,8
+        FILL_OUTER_COLOR = 0x800FDB11,  -- 
+        FILL_MIDDLE_COLOR = 0x800FD21, -- 
+        FILL_INNER_COLOR = 0x800FDF11,  -- 
 
         -- Independent native-font label. Position/color/size are adjustable.
         LABEL = {
