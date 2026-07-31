@@ -155,7 +155,7 @@ local CONFIG = {
     BOXES = {
         {
             ENABLE = true,
-            X = 224, Y = 142,
+            X = 222, Y = 142,
             WIDTH = 16, HEIGHT = 10,
             COLOR = 0x80000000,
         },
@@ -220,7 +220,7 @@ local CONFIG = {
             ENABLE = true,
             TEXT = "MP",
             -- Revised independent label placement.
-            X = 480,
+            X = 479,
             Y = 333,
             COLOR = 0x80E41853,
             FONT_SIZE = 8,
