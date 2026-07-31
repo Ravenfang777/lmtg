@@ -120,7 +120,7 @@ local CONFIG = {
             TEXT = "MP",
             -- Kept to the right of the fixed bar endpoint.
             X = 214,
-            Y = 104,
+            Y = 24,
             COLOR = 0x80E41853,
             FONT_SIZE = 8,
         },
