@@ -187,7 +187,7 @@ local CONFIG = {
         MINIMUM_MAX_MP = 10,
         MAXIMUM_MAX_MP = 200,
         MINIMUM_LENGTH = 20,
-        MAXIMUM_LENGTH = 400,
+        MAXIMUM_LENGTH = 380,
 
         HEIGHT = 7,
         BORDER = 1,
@@ -235,7 +235,7 @@ local CONFIG = {
     -- Revised LIMIT placement supplied for this variant.
     ORIGIN = {
         X = 75,
-        Y = 111,
+        Y = 115,
         SCALE = 0.54,
     },
 
@@ -276,8 +276,8 @@ local CONFIG = {
     LIMIT_LABEL = {
         ENABLE = true,
         TEXT = "LIMIT",
-        X = 483,
-        Y = 404,
+        X = 473,
+        Y = 409,
         COLOR = 0x800000FF,
         FONT_SIZE = 13,
     },
