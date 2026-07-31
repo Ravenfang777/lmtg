@@ -235,7 +235,7 @@ local CONFIG = {
     -- Revised LIMIT placement supplied for this variant.
     ORIGIN = {
         X = 75,
-        Y = 110,
+        Y = 111,
         SCALE = 0.54,
     },
 
